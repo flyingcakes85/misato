@@ -37,7 +37,7 @@ pub fn names_from_path(paths: Vec<PathBuf>, ext_len: usize) -> Vec<String>{
 
 pub fn detect_layout(source_file: SourceFile) {
     let mut layout: &str = "";
-    let contents = fs::read_to_string("te.html").expect("Something went wrong reading the file");
+    let contents = fs::read_to_string(source_file.path).expect("Something went wrong reading the file");
 
     for line in contents.lines() {
         match source_file.filetype {
