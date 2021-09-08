@@ -1,5 +1,6 @@
 use std::env;
 
+mod build;
 mod init;
 
 fn main() {
@@ -15,7 +16,7 @@ fn main() {
                 println!("[ERROR] Please provide a name for this project.")
             };
         } else if args[1] == "build" {
-            init::build_project(String::from(env::current_dir().unwrap().to_str().unwrap()));
+            build::build_project();
         } else {
             println!("[ERROR] Subcommand \"{}\" not recognized.", args[1]);
         }
