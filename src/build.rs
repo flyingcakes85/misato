@@ -9,13 +9,12 @@ use crate::build::layout_utils::detect_layout;
 mod layout_utils;
 
 pub fn build_project() {
-    fs::create_dir_all(format!("./target")).unwrap();
-
+    fs::create_dir::<PathBuf>([r".", "target"].iter().collect()).unwrap();
     // let folders: Vec<&str> = vec!["./assets", "./_pages", "./styles"];
 
     let html_pages_folder = "./_pages";
 
-    for source_path in WalkDir::new(html_pages_folder.clone()) {
+    for source_path in WalkDir::new(html_pages_folder) {
         // entry is of form ./_pages/index.html
         let source_path = source_path.unwrap();
         let mut dest_path: PathBuf = [r".", "target"].iter().collect();

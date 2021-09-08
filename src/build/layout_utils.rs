@@ -59,5 +59,6 @@ pub fn detect_layout(source_file: SourceFile) -> Option<String> {
             return Some(layout);
         }
     }
-    return None;
+
+    None
 }
