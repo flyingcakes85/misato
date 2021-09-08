@@ -3,9 +3,11 @@ name: Rust
   push:
     branches:
       - main
+      - dev
   pull_request:
     branches:
       - main
+      - dev
 env:
   RUST_BACKTRACE: 1
 jobs:
