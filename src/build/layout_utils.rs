@@ -2,7 +2,6 @@ use std::{
     ffi::OsStr,
     fs, io,
     path::{Path, PathBuf},
-    process::exit,
     vec,
 };
 
@@ -148,12 +147,9 @@ pub fn detect_layout(source_file: SourceFile, layout_folder: &Path) -> Option<St
         names_from_path(available_layouts(layout_folder.to_path_buf()).unwrap());
     if available_layouts.is_empty() {
         eprintln!("[ERR] No layouts defined in _layout.");
-        exit(1);
     }
-    println!("{}", layout);
 
     for l in available_layouts {
-        println!("{}", l);
         if l == layout {
             return Some(layout);
         }

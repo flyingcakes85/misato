@@ -1,6 +1,7 @@
 use handlebars::Handlebars;
 use std::fs::{create_dir_all, metadata};
 use std::path::{Path, PathBuf};
+use std::process::exit;
 use std::{collections::BTreeMap, fs};
 use walkdir::WalkDir;
 
@@ -141,7 +142,13 @@ fn generate_from_html(source_path: &Path, dest_path: &Path, layout_folder: &Path
 
     layout = match layout_detected {
         Some(s) => s,
-        None => panic!("Incorrect layout in {}", source_path.to_str().unwrap()),
+        None => {
+            println!(
+                "[ERR] Failed to match layout in {}",
+                source_path.to_str().unwrap()
+            );
+            exit(1);
+        }
     };
 
     let content = fs::read_to_string(source_path).expect("Could not read file");
