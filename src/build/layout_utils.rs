@@ -6,6 +6,40 @@ use std::{
     vec,
 };
 
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::build::layout_utils::names_from_path;
+
+    #[test]
+    /// Tests names_from_path()
+    fn check_layout_names() {
+        let mut path_list: Vec<PathBuf> = vec![];
+        let mut path: PathBuf;
+
+        // simple path
+        path = [r"path", "to", "file.txt"].iter().collect();
+        path_list.push(path);
+
+        // path with spaces
+        path = [r"path", "to", "a cool", "webpage.html"].iter().collect();
+        path_list.push(path);
+
+        // file without extension
+        path = [r"path", "to", "data"].iter().collect();
+        path_list.push(path);
+
+        let expected_file_list: Vec<String> = vec![
+            "file".to_string(),
+            "webpage".to_string(),
+            "data".to_string(),
+        ];
+
+        assert_eq!(names_from_path(path_list), expected_file_list);
+    }
+}
+
 pub enum SourceFileType {
     Html,
     _Md,
