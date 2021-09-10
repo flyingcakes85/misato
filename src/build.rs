@@ -1,6 +1,6 @@
 use handlebars::Handlebars;
 use std::fs::{create_dir_all, metadata};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::{collections::BTreeMap, fs};
 use walkdir::WalkDir;
 
@@ -9,7 +9,7 @@ use crate::build::layout_utils::detect_layout;
 mod layout_utils;
 
 pub fn build_project() {
-    fs::create_dir::<PathBuf>([r".", "target"].iter().collect()).unwrap();
+    fs::create_dir_all::<PathBuf>([r".", "target"].iter().collect()).unwrap();
     // let folders: Vec<&str> = vec!["./assets", "./_pages", "./styles"];
 
     let html_pages_folder = "./_pages";
@@ -32,7 +32,12 @@ pub fn build_project() {
 
             let dest_path_str = dest_path.to_str().unwrap();
             if dest_path_str[dest_path_str.len() - 4..] == *"html" {
-                generate_from_html(source_path.path(), dest_path);
+                let layout_folder: PathBuf = [r".", "_layouts"].iter().collect();
+                generate_from_html(
+                    &source_path.path().to_path_buf(),
+                    &dest_path,
+                    &layout_folder,
+                );
             } else {
                 // only during testing
                 // to be fixed
@@ -48,14 +53,15 @@ pub fn build_project() {
     }
 }
 
-fn generate_from_html(source_path: &std::path::Path, dest_path: PathBuf) {
+fn generate_from_html(source_path: &Path, dest_path: &Path, layout_folder: &Path) {
     let layout: String;
 
     let source_file = layout_utils::SourceFile {
         filetype: layout_utils::SourceFileType::Html,
         path: source_path.to_str().unwrap().to_string(),
     };
-    let layout_detected = detect_layout(source_file);
+
+    let layout_detected = detect_layout(source_file, layout_folder);
 
     layout = match layout_detected {
         Some(s) => s,
@@ -64,7 +70,7 @@ fn generate_from_html(source_path: &std::path::Path, dest_path: PathBuf) {
 
     let content = fs::read_to_string(source_path).expect("Could not read file");
 
-    let mut layout_template_path: PathBuf = [r".", "_layouts"].iter().collect();
+    let mut layout_template_path: PathBuf = layout_folder.to_path_buf();
     layout_template_path.push(layout);
     layout_template_path.set_extension("html");
     println!(
