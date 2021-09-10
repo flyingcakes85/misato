@@ -104,7 +104,7 @@ mod tests {
     #[test]
     /// Tests function detect_layout
     fn check_layout_detection() {
-        let (_, base_path, _) = create_layouts_directory("layout-detection-test");
+        let (_, base_path, _) = create_layouts_directory("layout_detection_test");
 
         let mut source_file_path = base_path.clone();
 
