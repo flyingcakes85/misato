@@ -13,12 +13,12 @@ fn main() {
             if args.len() > 2 {
                 init::create_project(args[2].clone(), env::current_dir().unwrap());
             } else {
-                println!("[ERROR] Please provide a name for this project.")
+                eprintln!("[ERR] Please provide a name for this project.")
             };
         } else if args[1] == "build" {
             build::build_project();
         } else {
-            println!("[ERROR] Subcommand \"{}\" not recognized.", args[1]);
+            eprintln!("[ERR] Subcommand \"{}\" not recognized.", args[1]);
         }
     }
 }

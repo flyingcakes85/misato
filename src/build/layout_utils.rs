@@ -1,4 +1,4 @@
-use std::{ffi::OsStr, fs, io, path::PathBuf, vec};
+use std::{ffi::OsStr, fs, io, path::PathBuf, process::exit, vec};
 
 pub enum SourceFileType {
     Html,
@@ -52,8 +52,11 @@ pub fn detect_layout(source_file: SourceFile) -> Option<String> {
     }
 
     let available_layouts = names_from_path(available_layouts().unwrap(), 5);
-    println!("{:?}", available_layouts);
-    println!("{:?}", layout);
+    if available_layouts.is_empty() {
+        eprintln!("[ERR] No layouts defined in _layout.");
+        exit(1);
+    }
+
     for l in available_layouts {
         if l == layout {
             return Some(layout);
