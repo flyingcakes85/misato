@@ -14,6 +14,8 @@ mod tests {
 
     use crate::build::layout_utils::{available_layouts, names_from_path};
 
+    use super::{detect_layout, SourceFile, SourceFileType};
+
     #[test]
     /// Tests names_from_path()
     fn check_layout_names() {
@@ -98,16 +100,67 @@ mod tests {
 
         assert_eq!(discovered_layouts, expected_path_list);
     }
+
+    #[test]
+    /// Tests function detect_layout
+    fn check_layout_detection() {
+        let (_, base_path, _) = create_layouts_directory("layout-detection-test");
+
+        let mut source_file_path = base_path.clone();
+
+        // create the _pages directory
+        source_file_path.pop();
+        source_file_path.push("_pages");
+        create_dir_all(&source_file_path).unwrap();
+
+        // create the actual file
+        source_file_path.push("product");
+        source_file_path.set_extension("html");
+
+        let source_file_contents = "
+<!-- layout: content_page -->
+
+product description
+"
+        .to_string();
+        fs::write(&source_file_path, source_file_contents).unwrap();
+
+        let source_file = SourceFile {
+            filetype: SourceFileType::Html,
+            path: source_file_path.clone(),
+        };
+
+        let detected_layout = detect_layout(source_file.clone(), &base_path);
+
+        assert!(detected_layout.is_some());
+        assert_eq!("content_page", detected_layout.unwrap());
+
+        // now try testing with non existent layout
+
+        let source_file_contents = "
+<!-- layout: non_existent_layout -->
+
+product description
+"
+        .to_string();
+
+        fs::write(&source_file_path, source_file_contents).unwrap();
+
+        let detected_layout = detect_layout(source_file, &base_path);
+        assert!(detected_layout.is_none());
+    }
 }
 
+#[derive(Clone)]
 pub enum SourceFileType {
     Html,
     _Md,
 }
 
+#[derive(Clone)]
 pub struct SourceFile {
     pub filetype: SourceFileType,
-    pub path: String,
+    pub path: PathBuf,
 }
 
 fn available_layouts(layout_folder: PathBuf) -> io::Result<Vec<PathBuf>> {
@@ -143,7 +196,7 @@ fn names_from_path(paths: Vec<PathBuf>) -> Vec<String> {
 }
 
 pub fn detect_layout(source_file: SourceFile, layout_folder: &Path) -> Option<String> {
-    let mut layout: String = "".to_string();
+    let mut layout: String = String::new();
     let contents =
         fs::read_to_string(source_file.path).expect("Something went wrong reading the file");
 

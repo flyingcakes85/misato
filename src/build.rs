@@ -137,7 +137,7 @@ fn generate_from_html(source_path: &Path, dest_path: &Path, layout_folder: &Path
 
     let source_file = layout_utils::SourceFile {
         filetype: layout_utils::SourceFileType::Html,
-        path: source_path.to_str().unwrap().to_string(),
+        path: source_path.to_path_buf(),
     };
 
     let layout_detected = detect_layout(source_file, layout_folder);
