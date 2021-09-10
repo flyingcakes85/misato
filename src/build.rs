@@ -8,6 +8,82 @@ use crate::build::layout_utils::detect_layout;
 
 mod layout_utils;
 
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs::{self, create_dir_all},
+        path::PathBuf,
+    };
+
+    use crate::build::generate_from_html;
+
+    #[test]
+    fn check_generation_from_html() {
+        let base_path: PathBuf = [r".", "test_cache"].iter().collect();
+        create_dir_all(&base_path).unwrap();
+
+        let mut source_path = base_path.clone();
+        source_path.push("source");
+        source_path.set_extension("html");
+
+        let mut dest_path = base_path.clone();
+        dest_path.push("dest");
+        dest_path.set_extension("html");
+
+        let mut layout_path = base_path.clone();
+        layout_path.push("_layout");
+        layout_path.push("test");
+        layout_path.set_extension("html");
+
+        let mut layout_folder = base_path.clone();
+        layout_folder.push("_layout");
+
+        create_dir_all(&layout_folder).unwrap();
+
+        let layout_html_code = "
+<!DOCTYPE html>
+<html>
+<body>
+Static text
+<br>
+{{{content}}}
+</body>
+</html>
+";
+
+        let source_code = "
+<!-- layout: test -->
+
+Example text
+<a href=\"https://www.rust-lang.org/\">Rust Website</a>
+";
+
+        let dest_code = "
+<!DOCTYPE html>
+<html>
+<body>
+Static text
+<br>
+
+<!-- layout: test -->
+
+Example text
+<a href=\"https://www.rust-lang.org/\">Rust Website</a>
+
+</body>
+</html>
+";
+        fs::write(layout_path, layout_html_code).unwrap();
+        fs::write(&source_path, source_code).unwrap();
+
+        generate_from_html(&source_path, &dest_path, &layout_folder);
+
+        let generated_dest_code = fs::read_to_string(dest_path).unwrap();
+
+        assert_eq!(generated_dest_code, dest_code);
+    }
+}
+
 pub fn build_project() {
     fs::create_dir_all::<PathBuf>([r".", "target"].iter().collect()).unwrap();
     // let folders: Vec<&str> = vec!["./assets", "./_pages", "./styles"];
