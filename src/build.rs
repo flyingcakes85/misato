@@ -20,7 +20,9 @@ mod tests {
 
     #[test]
     fn check_generation_from_html() {
-        let base_path: PathBuf = [r".", "test_cache"].iter().collect();
+        let base_path: PathBuf = [r".", "test_cache", "generation-from-html-test"]
+            .iter()
+            .collect();
         create_dir_all(&base_path).unwrap();
 
         let mut source_path = base_path.clone();

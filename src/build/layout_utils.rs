@@ -42,8 +42,8 @@ mod tests {
     }
 
     /// Helper function to create common variables
-    fn get_init_data() -> (PathBuf, Vec<String>) {
-        let base_path: PathBuf = [r".", "test_cache", "_layouts"].iter().collect();
+    fn get_init_data(dir_name: &str) -> (PathBuf, Vec<String>) {
+        let base_path: PathBuf = [r".", "test_cache", dir_name, "_layouts"].iter().collect();
         let layouts: Vec<String> = vec![
             "about".to_string(),
             "content_page".to_string(),
@@ -57,16 +57,17 @@ mod tests {
 
     /// Helper function to create layout files
     /// and return a Vector of layout paths
-    fn create_layouts_directory() -> Vec<String> {
-        let (base_path, layouts) = get_init_data();
+    /// along with the init data
+    fn create_layouts_directory(dir_name: &str) -> (Vec<String>, PathBuf, Vec<String>) {
+        let (base_path, layouts) = get_init_data(dir_name);
         create_dir_all(&base_path).unwrap();
 
         let mut layout_path_list: Vec<String> = Vec::new();
 
-        for l in layouts {
+        for l in layouts.clone() {
             let mut layout_path = base_path.clone();
             layout_path.push(l);
-            layout_path.set_extension(".html");
+            layout_path.set_extension("html");
 
             // also build the expected path list simultaneously
             layout_path_list.push(layout_path.clone().to_str().unwrap().to_string());
@@ -74,16 +75,15 @@ mod tests {
             fs::write(layout_path, "").unwrap();
         }
 
-        layout_path_list
+        (layout_path_list, base_path, layouts)
     }
 
     #[test]
     /// Tests available_layouts()
     fn check_layout_discovery() {
         // init the testing directory with layouts
-        let mut expected_path_list = create_layouts_directory();
-        // get variables to work on
-        let (base_path, _) = get_init_data();
+        let (mut expected_path_list, base_path, _) =
+            create_layouts_directory("layout_discovery_test");
 
         // convect PathBuf into String
         let mut discovered_layouts: Vec<String> = available_layouts(base_path)
