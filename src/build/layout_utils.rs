@@ -41,12 +41,9 @@ mod tests {
         assert_eq!(names_from_path(path_list), expected_file_list);
     }
 
-    #[test]
-    /// Tests available_layouts()
-    fn check_layout_detection() {
+    /// Helper function to create common variables
+    fn get_init_data() -> (PathBuf, Vec<String>) {
         let base_path: PathBuf = [r".", "test_cache", "_layouts"].iter().collect();
-        create_dir_all(&base_path).unwrap();
-
         let layouts: Vec<String> = vec![
             "about".to_string(),
             "content_page".to_string(),
@@ -55,19 +52,38 @@ mod tests {
             "profile".to_string(),
         ];
 
-        let mut expected_path_list: Vec<String> = Vec::new();
+        (base_path, layouts)
+    }
 
-        // create the layout files
+    /// Helper function to create layout files
+    /// and return a Vector of layout paths
+    fn create_layouts_directory() -> Vec<String> {
+        let (base_path, layouts) = get_init_data();
+        create_dir_all(&base_path).unwrap();
+
+        let mut layout_path_list: Vec<String> = Vec::new();
+
         for l in layouts {
             let mut layout_path = base_path.clone();
             layout_path.push(l);
             layout_path.set_extension(".html");
 
             // also build the expected path list simultaneously
-            expected_path_list.push(layout_path.clone().to_str().unwrap().to_string());
+            layout_path_list.push(layout_path.clone().to_str().unwrap().to_string());
 
             fs::write(layout_path, "").unwrap();
         }
+
+        layout_path_list
+    }
+
+    #[test]
+    /// Tests available_layouts()
+    fn check_layout_discovery() {
+        // init the testing directory with layouts
+        let mut expected_path_list = create_layouts_directory();
+        // get variables to work on
+        let (base_path, _) = get_init_data();
 
         // convect PathBuf into String
         let mut discovered_layouts: Vec<String> = available_layouts(base_path)
