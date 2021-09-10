@@ -35,7 +35,7 @@ mod tests {
         layout_path.push("test");
         layout_path.set_extension("html");
 
-        let mut layout_folder = base_path.clone();
+        let mut layout_folder = base_path;
         layout_folder.push("_layout");
 
         create_dir_all(&layout_folder).unwrap();
