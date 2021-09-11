@@ -163,6 +163,7 @@ pub struct SourceFile {
     pub path: PathBuf,
 }
 
+/// Returns a vector with paths of layouts availble
 fn available_layouts(layout_folder: PathBuf) -> io::Result<Vec<PathBuf>> {
     let mut layouts = vec![];
 
@@ -175,6 +176,7 @@ fn available_layouts(layout_folder: PathBuf) -> io::Result<Vec<PathBuf>> {
     Ok(layouts)
 }
 
+/// Returns a list of layout names from paths
 fn names_from_path(paths: Vec<PathBuf>) -> Vec<String> {
     let mut layout_list: Vec<String> = vec![];
     let mut file_name: String;
@@ -195,7 +197,11 @@ fn names_from_path(paths: Vec<PathBuf>) -> Vec<String> {
     layout_list
 }
 
+/// Given a source file path, and the layout folder
+/// this detects the layout given file uses
 pub fn detect_layout(source_file: SourceFile, layout_folder: &Path) -> Option<String> {
+    // @TODO : Refactor to support multiple files at once
+    // @BODY : Calling available_layouts() should be redundant. Get a list of files, and return a list of layouts.
     let mut layout: String = String::new();
     let contents =
         fs::read_to_string(source_file.path).expect("Something went wrong reading the file");
@@ -214,10 +220,12 @@ pub fn detect_layout(source_file: SourceFile, layout_folder: &Path) -> Option<St
 
     let available_layouts =
         names_from_path(available_layouts(layout_folder.to_path_buf()).unwrap());
+    // if no layouts defined
     if available_layouts.is_empty() {
         eprintln!("[ERR] No layouts defined in _layout.");
     }
 
+    // return Some() only if the layout actually exists
     for l in available_layouts {
         if l == layout {
             return Some(layout);

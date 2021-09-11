@@ -43,6 +43,7 @@ pub fn init_project(path: PathBuf) {
     }
 }
 
+/// Creates a folder then calles init() in there
 pub fn create_project(project_name: String, current_dir: PathBuf) {
     let mut project_path = current_dir;
     project_path.push(project_name);

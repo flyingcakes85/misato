@@ -87,27 +87,28 @@ Example text
     }
 }
 
+/// The main glue to generate code based on file types
+/// This should call other funcitons to generate, and
+/// itself should be minimal ideally.
 pub fn build_project() {
+    // initialize the target directory, where built site will go
     fs::create_dir_all::<PathBuf>([r".", "target"].iter().collect()).unwrap();
-    // let folders: Vec<&str> = vec!["./assets", "./_pages", "./styles"];
 
     let html_pages_folder = "./_pages";
 
+    // recursively follow all files in _pages and generate
     for source_path in WalkDir::new(html_pages_folder) {
         // entry is of form ./_pages/index.html
         let source_path = source_path.unwrap();
         let mut dest_path: PathBuf = [r".", "target"].iter().collect();
+
+        // generate only if the path is a file (not folder)
         if metadata(source_path.path().to_str().unwrap())
             .unwrap()
             .is_file()
         {
+            // @TODO : Find better way to decide destination path without using str
             dest_path.push(&source_path.path().to_str().unwrap()[9..]);
-
-            println!(
-                "source_path: {}\n dest path: {}",
-                source_path.path().to_str().unwrap(),
-                dest_path.to_str().unwrap()
-            );
 
             let dest_path_str = dest_path.to_str().unwrap();
             if dest_path_str[dest_path_str.len() - 4..] == *"html" {
@@ -126,12 +127,16 @@ pub fn build_project() {
                 );
             }
         } else {
+            // the path is a folder
             dest_path.push(&source_path.path().to_str().unwrap()[8..]);
             create_dir_all(dest_path).unwrap();
         }
     }
 }
 
+// Given a source and destination path,
+// this will use Handlebar to generate
+// an HTML file with layout plugged in.
 fn generate_from_html(source_path: &Path, dest_path: &Path, layout_folder: &Path) {
     let layout: String;
 
@@ -142,6 +147,8 @@ fn generate_from_html(source_path: &Path, dest_path: &Path, layout_folder: &Path
 
     let layout_detected = detect_layout(source_file, layout_folder);
 
+    // will be none when no layout is detected
+    // or when non existent layout is provided
     layout = match layout_detected {
         Some(s) => s,
         None => {
@@ -155,21 +162,24 @@ fn generate_from_html(source_path: &Path, dest_path: &Path, layout_folder: &Path
 
     let content = fs::read_to_string(source_path).expect("Could not read file");
 
+    // build the layout template path
     let mut layout_template_path: PathBuf = layout_folder.to_path_buf();
     layout_template_path.push(layout);
     layout_template_path.set_extension("html");
-    println!(
-        "layout template path : {}",
-        layout_template_path.to_str().unwrap()
-    );
+
     let layout_template = fs::read_to_string(layout_template_path).expect("error reading layout");
+
+    // create a handlebars instance
     let mut handlebars = Handlebars::new();
     handlebars
         .register_template_string(source_path.to_str().unwrap(), &layout_template)
         .unwrap();
+
+    // plug in the variable
     let mut data = BTreeMap::new();
     data.insert("content".to_string(), content);
 
+    // finally reder and write the file
     fs::write(
         dest_path,
         handlebars
