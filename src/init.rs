@@ -1,21 +1,45 @@
 use std::{
-    fs::{self, File},
+    fs::{self, create_dir_all, File},
     path::PathBuf,
 };
 
+/// function to initialize project directory
 pub fn init_project(path: PathBuf) {
-    let path_string = String::from(path.to_str().unwrap());
-
-    let folders: Vec<&str> = vec![
-        "assets", "_layouts", "_modules", "_pages", "_posts", "styles",
+    // folders to create
+    let folders: Vec<String> = vec![
+        "assets".to_string(),
+        "_layouts".to_string(),
+        "_modules".to_string(),
+        "_pages".to_string(),
+        "_posts".to_string(),
+        "styles".to_string(),
     ];
+
+    let path_base: PathBuf = path;
+
+    // create those folders
     for folder in folders {
-        fs::create_dir(format!("{}/{}", path_string, folder)).unwrap();
+        let mut path_new = path_base.clone();
+        path_new.push(folder);
+
+        create_dir_all(path_new).unwrap();
     }
 
-    let files: Vec<&str> = vec!["_pages/index.html", "styles/base.css", "config.toml"];
+    // files to create
+    let files: Vec<Vec<String>> = vec![
+        vec!["_pages".to_string(), "index.html".to_string()],
+        vec!["styles".to_string(), "base.css".to_string()],
+        vec!["config.toml".to_string()],
+    ];
+
+    // create those files
     for file in files {
-        File::create(format!("{}/{}", path_string, file)).unwrap();
+        let mut path_new = path_base.clone();
+        for f in file {
+            path_new.push(f);
+        }
+
+        File::create(path_new).unwrap();
     }
 }
 
