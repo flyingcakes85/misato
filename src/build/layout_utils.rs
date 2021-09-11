@@ -8,7 +8,7 @@ use std::{
 #[cfg(test)]
 mod tests {
     use std::{
-        fs::{self, create_dir_all},
+        fs::{self, create_dir_all, File},
         path::PathBuf,
     };
 
@@ -74,7 +74,7 @@ mod tests {
             // also build the expected path list simultaneously
             layout_path_list.push(layout_path.clone().to_str().unwrap().to_string());
 
-            fs::write(layout_path, "").unwrap();
+            File::create(layout_path).unwrap();
         }
 
         (layout_path_list, base_path, layouts)
