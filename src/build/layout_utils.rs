@@ -146,6 +146,19 @@ product description
 
         fs::write(&source_file_path, source_file_contents).unwrap();
 
+        let detected_layout = detect_layout(source_file.clone(), &base_path);
+        assert!(detected_layout.is_none());
+
+        // finally try testing with no layout
+
+        let source_file_contents = "
+
+product description
+"
+        .to_string();
+
+        fs::write(&source_file_path, source_file_contents).unwrap();
+
         let detected_layout = detect_layout(source_file, &base_path);
         assert!(detected_layout.is_none());
     }
