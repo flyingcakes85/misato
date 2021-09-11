@@ -1,5 +1,6 @@
 use handlebars::Handlebars;
-use std::fs::{create_dir_all, metadata};
+use std::ffi::OsStr;
+use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::{collections::BTreeMap, fs};
@@ -42,7 +43,7 @@ mod tests {
         layout_folder.push("_layout");
 
         create_dir_all(&layout_folder).unwrap();
-
+        // @TODO : Separate test files from code
         let layout_html_code = "
 <!DOCTYPE html>
 <html>
@@ -102,17 +103,13 @@ pub fn build_project() {
         let source_path = source_path.unwrap();
         let mut dest_path: PathBuf = [r".", "target"].iter().collect();
 
-        // generate only if the path is a file (not folder)
-        if metadata(source_path.path().to_str().unwrap())
-            .unwrap()
-            .is_file()
-        {
+        if source_path.path().is_file() {
             // @TODO : Find better way to decide destination path without using str
             dest_path.push(&source_path.path().to_str().unwrap()[9..]);
 
-            let dest_path_str = dest_path.to_str().unwrap();
-            if dest_path_str[dest_path_str.len() - 4..] == *"html" {
-                let layout_folder: PathBuf = [r".", "_layouts"].iter().collect();
+            let layout_folder: PathBuf = [r".", "_layouts"].iter().collect();
+
+            if dest_path.extension().and_then(OsStr::to_str) == Some("html") {
                 generate_from_html(
                     &source_path.path().to_path_buf(),
                     &dest_path,
@@ -134,7 +131,7 @@ pub fn build_project() {
     }
 }
 
-// Given a source and destination path,
+// Given a source html and destination path,
 // this will use Handlebar to generate
 // an HTML file with layout plugged in.
 fn generate_from_html(source_path: &Path, dest_path: &Path, layout_folder: &Path) {
@@ -187,4 +184,23 @@ fn generate_from_html(source_path: &Path, dest_path: &Path, layout_folder: &Path
             .unwrap(),
     )
     .unwrap();
+}
+
+/// Given a source md and destination path,
+/// this will use Handlebar to generate
+/// an HTML file with layout plugged in.
+fn _generate_from_md(source_path: &Path, dest_path: &Path, layout_folder: &Path) {
+    // @TODO : Remove this message and implement function
+    // Also remove underscore from function name
+    println!(
+        "WIP (generate_from_md)\n{:?}\n{:?}\n{:?}",
+        source_path, dest_path, layout_folder
+    );
+}
+
+/// Utility function to convert scss to css
+fn _scss_to_css(source_path: &Path, dest_path: &Path) {
+    // @TODO : Remove this message and implement function
+    // Also remove underscore from function name
+    println!("WIP (generate_from_md)\n{:?}\n{:?}", source_path, dest_path);
 }
