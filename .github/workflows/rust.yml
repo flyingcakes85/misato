@@ -49,7 +49,7 @@ jobs:
       - run: cargo test --verbose --workspace --all-features
       - run: cargo test --verbose --workspace --no-default-features
       - run: cargo build --verbose
-      - run: cargo run --verbose Berlin DE
+      - run: cargo run --verbose
   clippy:
     name: Lint with clippy
     runs-on: ubuntu-latest
