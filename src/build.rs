@@ -1,24 +1,25 @@
+use crate::build::layout_utils::detect_layout;
 use handlebars::Handlebars;
+use rsass::{compile_scss_path, output};
 use std::ffi::OsStr;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::process::exit;
+use std::str;
 use std::{collections::BTreeMap, fs};
 use walkdir::WalkDir;
-
-use crate::build::layout_utils::detect_layout;
 
 mod layout_utils;
 
 #[cfg(test)]
 mod tests {
+    use crate::build::_scss_to_css;
+    use crate::build::generate_from_html;
     use std::{
         fs::{self, create_dir_all},
         path::PathBuf,
+        str,
     };
-
-    use crate::build::generate_from_html;
-
     #[test]
     fn check_generation_from_html() {
         let base_path: PathBuf = [r".", "test_cache", "generation-from-html-test"]
@@ -86,6 +87,41 @@ Example text
 
         assert_eq!(generated_dest_code, dest_code);
     }
+    #[test]
+    fn check_generation_from_sass() {
+        let base_path: PathBuf = [r".", "test_cache", "generation-from-scss-test"]
+        .iter()
+        .collect();
+        create_dir_all(&base_path).unwrap();
+
+        let mut source_path = base_path.clone();
+        source_path.push("source");
+        source_path.set_extension("scss");
+
+        let source_scss = "
+$font-stack: Helvetica, sans-serif;
+$primary-color: #333;
+
+body {
+    font: 100% $font-stack;
+    color: $primary-color;
+}
+    "
+        .to_string();
+
+        let expected_css = "body{font:100% Helvetica,sans-serif;color:#333}\n".to_string();
+
+        fs::write(&source_path, source_scss).unwrap();
+
+        let mut dest_path = base_path;
+        dest_path.push("dest");
+        dest_path.set_extension("css");
+
+        _scss_to_css(&source_path, &dest_path);
+
+        let generated_css = fs::read(dest_path).unwrap();
+        assert_eq!(expected_css, str::from_utf8(&generated_css).unwrap());
+    }
 }
 
 /// The main glue to generate code based on file types
@@ -108,7 +144,6 @@ pub fn build_project() {
             dest_path.push(&source_path.path().to_str().unwrap()[9..]);
 
             let layout_folder: PathBuf = [r".", "_layouts"].iter().collect();
-
             if dest_path.extension().and_then(OsStr::to_str) == Some("html") {
                 generate_from_html(
                     &source_path.path().to_path_buf(),
@@ -130,7 +165,6 @@ pub fn build_project() {
         }
     }
 }
-
 // Given a source html and destination path,
 // this will use Handlebar to generate
 // an HTML file with layout plugged in.
@@ -200,7 +234,13 @@ fn _generate_from_md(source_path: &Path, dest_path: &Path, layout_folder: &Path)
 
 /// Utility function to convert scss to css
 fn _scss_to_css(source_path: &Path, dest_path: &Path) {
-    // @TODO : Remove this message and implement function
-    // Also remove underscore from function name
-    println!("WIP (generate_from_md)\n{:?}\n{:?}", source_path, dest_path);
+    // @TODO : Also remove underscore from function name
+
+    let format = output::Format {
+        style: output::Style::Compressed,
+        ..Default::default()
+    };
+
+    let css = compile_scss_path(source_path, format).unwrap();
+    fs::write(dest_path, str::from_utf8(&css).unwrap()).unwrap();
 }
