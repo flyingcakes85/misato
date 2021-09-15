@@ -41,6 +41,89 @@ pub fn init_project(path: PathBuf) {
 
         File::create(path_new).unwrap();
     }
+
+    let first_post = "+++
+[info]
+title = \"First Post\"
+subtitle = \"Example first post\"
+
+[data]
+layout = \"post\"
+
+[vars]
+ssg = \"Misato\"
++++
+
+This is my first post.
+
+Made using {{{vars.ssg}}}
+"
+    .to_string();
+
+    let layout_post = "<!DOCTYPE html>
+<html lang=\"en\">
+
+<head>
+    <title>{{{info.title}}}</title>
+</head>
+
+<body>
+    <small>
+        <i>{{{info.subtitle}}}</i>
+    </small>
+    <br>
+    {{{content}}}
+</body>
+</html>
+"
+    .to_string();
+
+    let pages_index = "<!DOCTYPE html>
+<html lang=\"en\">
+
+<head>
+    <title>Homepage</title>
+</head>
+
+<body>
+    <h2>This is a homepage</h2>
+</body>
+
+</html>
+"
+    .to_string();
+
+    let config_toml = "[website]
+name = \"New Website\"
+author = \"Your Name\"
+description = \"A new Misato project\"
+
+[config]
+scss = [\"main.scss\"]
+
+[globals]
+"
+    .to_string();
+
+    let mut layout_post_path = path_base.clone();
+    layout_post_path.push("_layouts");
+    layout_post_path.push("post.html");
+
+    let mut config_path = path_base.clone();
+    config_path.push("config.toml");
+
+    let mut first_post_path = path_base.clone();
+    first_post_path.push("_posts");
+    first_post_path.push("first_post.md");
+
+    let mut pages_index_path = path_base.clone();
+    pages_index_path.push("_pages");
+    pages_index_path.push("index.html");
+
+    fs::write(layout_post_path, layout_post).unwrap();
+    fs::write(first_post_path, first_post).unwrap();
+    fs::write(pages_index_path, pages_index).unwrap();
+    fs::write(config_path, config_toml).unwrap();
 }
 
 /// Creates a folder then calles init() in there

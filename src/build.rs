@@ -271,7 +271,7 @@ pub fn generate_from_md(source_path: &Path, dest_path: &Path, layout_folder: &Pa
 
     // build layout path and read layout
     let mut layout_path: PathBuf = layout_folder.to_path_buf();
-    layout_path.push(front_matter["info"]["layout"].as_str().unwrap());
+    layout_path.push(front_matter["data"]["layout"].as_str().unwrap());
     layout_path.set_extension("html");
     let layout_string = fs::read_to_string(layout_path).unwrap();
 
