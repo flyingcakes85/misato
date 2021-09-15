@@ -143,7 +143,7 @@ pub fn build_project() {
 fn generate_pages() {
     // let html_pages_folder = "./_pages";
 
-    let content_folders = vec!["./_pages".to_string(), "./_posts".to_string()];
+    let content_folders = vec!["./pages".to_string(), "./posts".to_string()];
 
     for c in content_folders {
         // recursively follow all files in _pages and generate
@@ -156,7 +156,7 @@ fn generate_pages() {
                 // @TODO : Find better way to decide destination path without using str
                 dest_path.push(&source_path.path().to_str().unwrap()[9..]);
 
-                let layout_folder: PathBuf = [r".", "_layouts"].iter().collect();
+                let layout_folder: PathBuf = [r".", "layouts"].iter().collect();
                 if dest_path.extension().and_then(OsStr::to_str) == Some("html") {
                     generate_from_html(
                         &source_path.path().to_path_buf(),

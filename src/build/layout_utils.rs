@@ -45,7 +45,7 @@ mod tests {
 
     /// Helper function to create common variables
     fn get_init_data(dir_name: &str) -> (PathBuf, Vec<String>) {
-        let base_path: PathBuf = [r".", "test_cache", dir_name, "_layouts"].iter().collect();
+        let base_path: PathBuf = [r".", "test_cache", dir_name, "layouts"].iter().collect();
         let layouts: Vec<String> = vec![
             "about".to_string(),
             "content_page".to_string(),
@@ -81,7 +81,7 @@ mod tests {
     }
 
     #[test]
-    /// Tests available_layouts()
+    /// Tests available()
     fn check_layout_discovery() {
         // init the testing directory with layouts
         let (mut expected_path_list, base_path, _) =

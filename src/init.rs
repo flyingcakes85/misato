@@ -8,10 +8,9 @@ pub fn init_project(path: PathBuf) {
     // folders to create
     let folders: Vec<String> = vec![
         "assets".to_string(),
-        "_layouts".to_string(),
-        "_modules".to_string(),
-        "_pages".to_string(),
-        "_posts".to_string(),
+        "layouts".to_string(),
+        "pages".to_string(),
+        "posts".to_string(),
         "styles".to_string(),
     ];
 
@@ -27,7 +26,7 @@ pub fn init_project(path: PathBuf) {
 
     // files to create
     let files: Vec<Vec<String>> = vec![
-        vec!["_pages".to_string(), "index.html".to_string()],
+        vec!["pages".to_string(), "index.html".to_string()],
         vec!["styles".to_string(), "base.css".to_string()],
         vec!["config.toml".to_string()],
     ];
@@ -106,18 +105,18 @@ scss = [\"main.scss\"]
     .to_string();
 
     let mut layout_post_path = path_base.clone();
-    layout_post_path.push("_layouts");
+    layout_post_path.push("layouts");
     layout_post_path.push("post.html");
 
     let mut config_path = path_base.clone();
     config_path.push("config.toml");
 
     let mut first_post_path = path_base.clone();
-    first_post_path.push("_posts");
+    first_post_path.push("posts");
     first_post_path.push("first_post.md");
 
     let mut pages_index_path = path_base.clone();
-    pages_index_path.push("_pages");
+    pages_index_path.push("pages");
     pages_index_path.push("index.html");
 
     fs::write(layout_post_path, layout_post).unwrap();
