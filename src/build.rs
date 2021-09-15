@@ -229,13 +229,45 @@ fn generate_from_html(source_path: &Path, dest_path: &Path, layout_folder: &Path
 /// Given a source md and destination path,
 /// this will use Handlebar to generate
 /// an HTML file with layout plugged in.
-fn _generate_from_md(source_path: &Path, dest_path: &Path, layout_folder: &Path) {
-    // @TODO : Remove this message and implement function
-    // Also remove underscore from function name
-    println!(
-        "WIP (generate_from_md)\n{:?}\n{:?}\n{:?}",
-        source_path, dest_path, layout_folder
-    );
+pub fn _generate_from_md(source_path: &Path, dest_path: &Path, layout_folder: &Path) {
+    // read source md file
+    let source_data = fs::read_to_string(source_path).unwrap();
+    // get front matter and md without that
+    let (front_matter, source_data) = _parse_front_matter(&source_data);
+
+    // let mut template_vars = vars.clone();
+
+    let mut handlebars = Handlebars::new();
+    handlebars
+        .register_template_string("markdown_data", source_data)
+        .unwrap();
+
+    // plug in any variables from front matter to md
+    let plugged_md = handlebars.render("markdown_data", &front_matter).unwrap();
+
+    let options = ComrakOptions::default();
+
+    // convert md to html
+    let html = markdown_to_html(&plugged_md, &options);
+
+    let mut data = BTreeMap::new();
+    data.insert("content".to_string(), html);
+
+    // build layout path and read layout
+    let mut layout_path: PathBuf = layout_folder.to_path_buf();
+    layout_path.push(front_matter["info"]["layout"].as_str().unwrap());
+    layout_path.set_extension("html");
+    let layout_string = fs::read_to_string(layout_path).unwrap();
+
+    handlebars
+        .register_template_string("html", layout_string)
+        .unwrap();
+
+    // generate html with layout
+    let final_html = handlebars.render("html", &data).unwrap();
+
+    // and finally, write to file...
+    fs::write(dest_path, final_html).unwrap();
 }
 
 /// Utility function to convert scss to css
