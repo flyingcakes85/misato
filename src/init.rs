@@ -1,3 +1,5 @@
+#![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
+
 use std::{
     fs::{self, create_dir_all, File},
     path::PathBuf,

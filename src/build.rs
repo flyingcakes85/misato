@@ -1,3 +1,5 @@
+#![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
+
 use crate::build::layout_utils::detect_layout;
 use comrak::{markdown_to_html, ComrakOptions};
 use extract_frontmatter::Extractor;
