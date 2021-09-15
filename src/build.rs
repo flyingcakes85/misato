@@ -9,7 +9,6 @@ use std::{
     fs,
     fs::create_dir_all,
     path::{Path, PathBuf},
-    process::exit,
     str,
 };
 use toml::Value;
@@ -137,40 +136,57 @@ pub fn build_project() {
     // initialize the target directory, where built site will go
     fs::create_dir_all::<PathBuf>([r".", "target"].iter().collect()).unwrap();
 
-    let html_pages_folder = "./_pages";
+    generate_pages();
+    // generate_md_pages();
+}
 
-    // recursively follow all files in _pages and generate
-    for source_path in WalkDir::new(html_pages_folder) {
-        // entry is of form ./_pages/index.html
-        let source_path = source_path.unwrap();
-        let mut dest_path: PathBuf = [r".", "target"].iter().collect();
+fn generate_pages() {
+    // let html_pages_folder = "./_pages";
 
-        if source_path.path().is_file() {
-            // @TODO : Find better way to decide destination path without using str
-            dest_path.push(&source_path.path().to_str().unwrap()[9..]);
+    let content_folders = vec!["./_pages".to_string(), "./_posts".to_string()];
 
-            let layout_folder: PathBuf = [r".", "_layouts"].iter().collect();
-            if dest_path.extension().and_then(OsStr::to_str) == Some("html") {
-                generate_from_html(
-                    &source_path.path().to_path_buf(),
-                    &dest_path,
-                    &layout_folder,
-                );
+    for c in content_folders {
+        // recursively follow all files in _pages and generate
+        for source_path in WalkDir::new(c) {
+            // entry is of form ./_pages/index.html
+            let source_path = source_path.unwrap();
+            let mut dest_path: PathBuf = [r".", "target"].iter().collect();
+
+            if source_path.path().is_file() {
+                // @TODO : Find better way to decide destination path without using str
+                dest_path.push(&source_path.path().to_str().unwrap()[9..]);
+
+                let layout_folder: PathBuf = [r".", "_layouts"].iter().collect();
+                if dest_path.extension().and_then(OsStr::to_str) == Some("html") {
+                    generate_from_html(
+                        &source_path.path().to_path_buf(),
+                        &dest_path,
+                        &layout_folder,
+                    );
+                } else if dest_path.extension().and_then(OsStr::to_str) == Some("md") {
+                    dest_path.set_extension("html");
+                    generate_from_md(
+                        &source_path.path().to_path_buf(),
+                        &dest_path,
+                        &layout_folder,
+                    )
+                } else {
+                    // only during testing
+                    // to be fixed
+                    println!(
+                        "Not touching unknown file: {}",
+                        source_path.path().to_str().unwrap()
+                    );
+                }
             } else {
-                // only during testing
-                // to be fixed
-                println!(
-                    "Not touching unknown file: {}",
-                    source_path.path().to_str().unwrap()
-                );
+                // the path is a folder
+                dest_path.push(&source_path.path().to_str().unwrap()[8..]);
+                create_dir_all(dest_path).unwrap();
             }
-        } else {
-            // the path is a folder
-            dest_path.push(&source_path.path().to_str().unwrap()[8..]);
-            create_dir_all(dest_path).unwrap();
         }
     }
 }
+
 // Given a source html and destination path,
 // this will use Handlebar to generate
 // an HTML file with layout plugged in.
@@ -186,14 +202,14 @@ fn generate_from_html(source_path: &Path, dest_path: &Path, layout_folder: &Path
 
     // will be none when no layout is detected
     // or when non existent layout is provided
-    layout = match layout_detected {
-        Some(s) => s,
+    match layout_detected {
+        Some(s) => layout = s,
         None => {
             println!(
-                "[ERR] Failed to match layout in {}",
+                "[WARN] Failed to match layout in {}",
                 source_path.to_str().unwrap()
             );
-            exit(1);
+            return;
         }
     };
 
@@ -229,11 +245,11 @@ fn generate_from_html(source_path: &Path, dest_path: &Path, layout_folder: &Path
 /// Given a source md and destination path,
 /// this will use Handlebar to generate
 /// an HTML file with layout plugged in.
-pub fn _generate_from_md(source_path: &Path, dest_path: &Path, layout_folder: &Path) {
+pub fn generate_from_md(source_path: &Path, dest_path: &Path, layout_folder: &Path) {
     // read source md file
     let source_data = fs::read_to_string(source_path).unwrap();
     // get front matter and md without that
-    let (front_matter, source_data) = _parse_front_matter(&source_data);
+    let (front_matter, source_data) = parse_front_matter(&source_data);
 
     // let mut template_vars = vars.clone();
 
@@ -260,7 +276,13 @@ pub fn _generate_from_md(source_path: &Path, dest_path: &Path, layout_folder: &P
     let layout_string = fs::read_to_string(layout_path).unwrap();
 
     handlebars
-        .register_template_string("html", layout_string)
+        .register_template_string("raw_html", layout_string)
+        .unwrap();
+
+    let html_layout_plugged = handlebars.render("raw_html", &front_matter).unwrap();
+
+    handlebars
+        .register_template_string("html", html_layout_plugged)
         .unwrap();
 
     // generate html with layout
@@ -283,7 +305,7 @@ fn _scss_to_css(source_path: &Path, dest_path: &Path) {
     fs::write(dest_path, str::from_utf8(&css).unwrap()).unwrap();
 }
 
-fn _parse_front_matter(source_data: &String) -> (Value, String) {
+fn parse_front_matter(source_data: &str) -> (Value, String) {
     let mut extractor = Extractor::new(source_data);
     extractor.select_by_terminator("+++");
     extractor.discard_first_line();
