@@ -1,12 +1,18 @@
 use crate::build::layout_utils::detect_layout;
+use comrak::{markdown_to_html, ComrakOptions};
+use extract_frontmatter::Extractor;
 use handlebars::Handlebars;
 use rsass::{compile_scss_path, output};
-use std::ffi::OsStr;
-use std::fs::create_dir_all;
-use std::path::{Path, PathBuf};
-use std::process::exit;
-use std::str;
-use std::{collections::BTreeMap, fs};
+use std::{
+    collections::BTreeMap,
+    ffi::OsStr,
+    fs,
+    fs::create_dir_all,
+    path::{Path, PathBuf},
+    process::exit,
+    str,
+};
+use toml::Value;
 use walkdir::WalkDir;
 
 mod layout_utils;
@@ -243,4 +249,19 @@ fn _scss_to_css(source_path: &Path, dest_path: &Path) {
 
     let css = compile_scss_path(source_path, format).unwrap();
     fs::write(dest_path, str::from_utf8(&css).unwrap()).unwrap();
+}
+
+fn _parse_front_matter(source_data: &String) -> (Value, String) {
+    let mut extractor = Extractor::new(source_data);
+    extractor.select_by_terminator("+++");
+    extractor.discard_first_line();
+
+    let (front_matter, document): (Vec<&str>, &str) = extractor.split();
+
+    let document = document.trim().to_string();
+    let front_matter = front_matter.join("\n");
+
+    let front_matter_toml = front_matter.parse::<Value>().unwrap();
+
+    (front_matter_toml, document)
 }
