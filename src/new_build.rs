@@ -15,12 +15,25 @@ use std::{
     fs,
     fs::create_dir_all,
     path::{Path, PathBuf},
+    process::exit,
     str,
 };
-use toml::Deserializer;
 use toml::Value as Toml;
+use toml::{to_vec, Deserializer};
 // use toml::Value;
 use walkdir::WalkDir;
+
+#[derive(Debug)]
+struct Post {
+    title: String,
+    subtitle: String,
+    author: String,
+    layout: String,
+    path: String,
+    banner: String,
+    categories: Vec<String>,
+    styles: Vec<String>,
+}
 
 pub fn build() {
     fs::create_dir_all("target").unwrap();
@@ -38,9 +51,10 @@ pub fn build() {
 
     base_attributes.insert("title".to_string(), to_json("Test Title"));
 
-    render_pages(renderlist_pages, &handlebars, &base_attributes);
-    // render_posts(renderlist_posts, &handlebars, &base_attributes);
+    // render_pages(renderlist_pages, &handlebars, &base_attributes);
+    let post_list = render_posts(renderlist_posts, &handlebars, &base_attributes);
 
+    println!("{:?}", post_list);
     generate_css();
 }
 
@@ -68,54 +82,92 @@ fn render_posts(
     renderlist: Vec<(String, PathBuf)>,
     handlebars: &Handlebars,
     data: &Map<String, Json>,
-) {
-    for (template_name, template_path) in renderlist {
+) -> Vec<Post> {
+    let mut html_to_write: String = String::new();
+    let mut post_list: Vec<Post> = Vec::<Post>::new();
+    let mut post: Post;
+
+    for (_, template_path) in renderlist {
         let source_data = fs::read_to_string(&template_path).unwrap();
+        // generate destination path
+        let dest_path = template_path.to_str().unwrap().replace("posts/", "target/");
 
+        // plug data contains all attributes to add to MD file
         let (front_matter, source_data) = parse_front_matter(&source_data);
-
         let mut plug_data = data.clone();
+        // copy global attributes
         for m in front_matter.as_table() {
             for (k, v) in m {
-                plug_data.insert(
-                    k.to_string(),
-                    serde_json::from_str(&serde_json::to_string(&toml_to_json(v.clone())).unwrap())
-                        .unwrap(),
-                );
+                plug_data.insert(k.to_string(), value_to_json(v));
             }
         }
 
-        plug_data.insert("title".to_string(), plug_data["info"]["title"].clone());
+        // populate the post list
+        post = front_matter_toml_to_post(front_matter);
+        post_list.push(post);
 
-        let mut s_handlebars = handlebars.clone();
-        s_handlebars
+        // Override title from markdown file if it exists
+        if plug_data.contains_key("info") {
+            if plug_data["info"].as_object().unwrap().contains_key("title") {
+                plug_data.insert("title".to_string(), plug_data["info"]["title"].clone());
+            }
+        }
+
+        // create a local clone of handlebars
+        let mut md_handlebars = handlebars.clone();
+
+        // register the raw markdown data and rewrite source_data
+        md_handlebars
             .register_template_string("raw_markdown", source_data)
             .unwrap();
-        let source_data = s_handlebars.render("raw_markdown", &plug_data).unwrap();
+        let source_data = md_handlebars.render("raw_markdown", &plug_data).unwrap();
 
+        // convert plugged markdown to html
         let comark_options = ComrakOptions::default();
         let html = markdown_to_html(&source_data, &comark_options);
 
-        s_handlebars
+        // register the final markdown_data template
+        md_handlebars
             .register_template_string("markdown_data", &html)
             .unwrap();
+        println!("{:?}", plug_data);
         println!(
             "{}",
-            s_handlebars
+            md_handlebars
                 .render(plug_data["data"]["layout"].as_str().unwrap(), &plug_data)
                 .unwrap()
         );
 
-        let dest_path = template_path.to_str().unwrap().replace("posts/", "target/");
+        // generate final html
+        // check if layout exists
+        if plug_data.contains_key("data") {
+            if plug_data["data"]
+                .as_object()
+                .unwrap()
+                .contains_key("layout")
+            {
+                // it has layout definition
+                println!("Writing html");
+                html_to_write = md_handlebars
+                    .render(plug_data["data"]["layout"].as_str().unwrap(), &plug_data)
+                    .unwrap();
+                // println!("{}", &html_to_write);
+            } else {
+                // no layout definition
+                // simply output html
+                html_to_write = html;
+            }
+        }
 
-        fs::write(
-            Path::new(&dest_path).with_extension("html"),
-            s_handlebars
-                .render(plug_data["data"]["layout"].as_str().unwrap(), &plug_data)
-                .unwrap(),
-        )
-        .unwrap();
+        // write out the html file
+        fs::write(Path::new(&dest_path).with_extension("html"), &html_to_write).unwrap();
     }
+
+    post_list
+}
+
+fn value_to_json(toml: &Toml) -> Json {
+    serde_json::from_str(&serde_json::to_string(&toml_to_json(toml.clone())).unwrap()).unwrap()
 }
 
 fn parse_front_matter(source_data: &str) -> (Toml, String) {
@@ -131,6 +183,119 @@ fn parse_front_matter(source_data: &str) -> (Toml, String) {
     let front_matter_toml = front_matter.parse::<Toml>().unwrap();
 
     (front_matter_toml, document)
+}
+
+fn front_matter_toml_to_post(fm: Toml) -> Post {
+    let front_matter = fm.as_table().unwrap();
+    let mut title = String::new();
+    let mut subtitle = String::new();
+    let mut author = String::new();
+    let mut layout = String::new();
+    let mut path = String::new();
+    let mut banner = String::new();
+    let mut categories = Vec::<String>::new();
+    let mut styles = Vec::<String>::new();
+
+    if front_matter.contains_key("info") {
+        if front_matter["info"]
+            .as_table()
+            .unwrap()
+            .contains_key("title")
+        {
+            title = front_matter["info"]["title"].to_string();
+        }
+
+        if front_matter["info"]
+            .as_table()
+            .unwrap()
+            .contains_key("subtitle")
+        {
+            subtitle = front_matter["info"]["subtitle"].to_string();
+        }
+
+        if front_matter["info"]
+            .as_table()
+            .unwrap()
+            .contains_key("author")
+        {
+            author = front_matter["info"]["author"].to_string();
+        }
+
+        if front_matter["info"]
+            .as_table()
+            .unwrap()
+            .contains_key("categories")
+        {
+            categories = front_matter["info"]["categories"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|c| c.to_string())
+                .collect();
+        }
+    }
+
+    if front_matter.contains_key("data") {
+        if front_matter["data"]
+            .as_table()
+            .unwrap()
+            .contains_key("styles")
+        {
+            styles = front_matter["data"]["styles"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|c| c.to_string())
+                .collect();
+        }
+
+        if front_matter["data"]
+            .as_table()
+            .unwrap()
+            .contains_key("layout")
+        {
+            layout = front_matter["data"]["layout"].to_string();
+        }
+
+        if front_matter["data"]
+            .as_table()
+            .unwrap()
+            .contains_key("path")
+        {
+            path = front_matter["data"]["path"].to_string();
+        }
+
+        if front_matter["data"]
+            .as_table()
+            .unwrap()
+            .contains_key("banner")
+        {
+            banner = front_matter["data"]["banner"].to_string();
+        }
+    }
+
+    let p: Post = Post {
+        title,
+        subtitle,
+        author,
+        layout,
+        path,
+        banner,
+        categories,
+        styles,
+    };
+    p
+}
+
+// checks if keys exists in 2 level json map
+fn json_map_key_exists(data: &Map<String, Json>, k1: &String, k2: &String) -> bool {
+    if data.contains_key(k1) {
+        if data[k1].as_object().unwrap().contains_key(k2) {
+            return true;
+        }
+        return false;
+    }
+    false
 }
 
 fn get_attributes() -> Map<String, Json> {
