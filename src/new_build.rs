@@ -189,7 +189,7 @@ pub fn discover_posts(handlebars: &mut Handlebars, renderlist: &mut Vec<(String,
 }
 
 pub fn discover_layouts(handlebars: &mut Handlebars) {
-    if Path::new("posts").exists() {
+    if Path::new("layouts").exists() {
         for source_path in WalkDir::new("layouts") {
             let source_path = source_path.unwrap();
 
