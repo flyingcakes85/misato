@@ -39,6 +39,9 @@ pub fn build() {
     base_attributes.insert("title".to_string(), to_json("Test Title"));
 
     render_pages(renderlist_pages, &handlebars, &base_attributes);
+    // render_posts(renderlist_posts, &handlebars, &base_attributes);
+
+    generate_css();
 }
 
 fn render_pages(
@@ -59,6 +62,75 @@ fn render_pages(
         )
         .unwrap();
     }
+}
+
+fn render_posts(
+    renderlist: Vec<(String, PathBuf)>,
+    handlebars: &Handlebars,
+    data: &Map<String, Json>,
+) {
+    for (template_name, template_path) in renderlist {
+        let source_data = fs::read_to_string(&template_path).unwrap();
+
+        let (front_matter, source_data) = parse_front_matter(&source_data);
+
+        let mut plug_data = data.clone();
+        for m in front_matter.as_table() {
+            for (k, v) in m {
+                plug_data.insert(
+                    k.to_string(),
+                    serde_json::from_str(&serde_json::to_string(&toml_to_json(v.clone())).unwrap())
+                        .unwrap(),
+                );
+            }
+        }
+
+        plug_data.insert("title".to_string(), plug_data["info"]["title"].clone());
+
+        let mut s_handlebars = handlebars.clone();
+        s_handlebars
+            .register_template_string("raw_markdown", source_data)
+            .unwrap();
+        let source_data = s_handlebars.render("raw_markdown", &plug_data).unwrap();
+
+        let comark_options = ComrakOptions::default();
+        let html = markdown_to_html(&source_data, &comark_options);
+
+        s_handlebars
+            .register_template_string("markdown_data", &html)
+            .unwrap();
+        println!(
+            "{}",
+            s_handlebars
+                .render(plug_data["data"]["layout"].as_str().unwrap(), &plug_data)
+                .unwrap()
+        );
+
+        let dest_path = template_path.to_str().unwrap().replace("posts/", "target/");
+
+        fs::write(
+            Path::new(&dest_path).with_extension("html"),
+            s_handlebars
+                .render(plug_data["data"]["layout"].as_str().unwrap(), &plug_data)
+                .unwrap(),
+        )
+        .unwrap();
+    }
+}
+
+fn parse_front_matter(source_data: &str) -> (Toml, String) {
+    let mut extractor = Extractor::new(source_data);
+    extractor.select_by_terminator("+++");
+    extractor.discard_first_line();
+
+    let (front_matter, document): (Vec<&str>, &str) = extractor.split();
+
+    let document = document.trim().to_string();
+    let front_matter = front_matter.join("\n");
+
+    let front_matter_toml = front_matter.parse::<Toml>().unwrap();
+
+    (front_matter_toml, document)
 }
 
 fn get_attributes() -> Map<String, Json> {
@@ -164,4 +236,14 @@ fn get_file_name(p: &Path) -> String {
         // TODO : Handle error
         .unwrap()
         .to_string()
+}
+
+fn generate_css() {
+    for p in WalkDir::new("styles") {
+        let p = p.unwrap();
+        let p = p.path();
+        if p.extension().and_then(OsStr::to_str) == Some("css") {
+            fs::copy(p, p.to_str().unwrap().replace("styles/", "target/")).unwrap();
+        }
+    }
 }
