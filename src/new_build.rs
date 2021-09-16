@@ -25,7 +25,9 @@ use walkdir::WalkDir;
 pub fn build() {
     let base_attributes = get_attributes();
 
-    println!("{:?}", base_attributes);
+    let mut handlebars = Handlebars::new();
+
+    discover_pages(&mut handlebars);
 }
 
 fn get_attributes() -> Map<String, Json> {
@@ -47,14 +49,24 @@ fn get_attributes() -> Map<String, Json> {
     attributes
 }
 
-pub fn discover_pages() {
-    for source_path in WalkDir::new("pages") {
-        let source_path = source_path.unwrap();
+pub fn discover_pages(handlebars: &mut Handlebars) {
+    if Path::new("pages").exists() {
+        for source_path in WalkDir::new("pages") {
+            let source_path = source_path.unwrap();
 
-        if source_path.path().extension().and_then(OsStr::to_str) == Some("html") {}
+            if source_path.path().extension().and_then(OsStr::to_str) == Some("html")
+                || source_path.path().extension().and_then(OsStr::to_str) == Some("hbs")
+            {
+                handlebars
+                    .register_template_file(
+                        &get_file_name(&source_path.path()),
+                        &source_path.path(),
+                    )
+                    .unwrap();
+            }
+        }
     }
 }
-
 fn toml_to_json(toml: Toml) -> Json {
     match toml {
         Toml::String(s) => Json::String(s),
@@ -73,4 +85,15 @@ fn toml_to_json(toml: Toml) -> Json {
         ),
         Toml::Datetime(dt) => Json::String(dt.to_string()),
     }
+}
+
+fn get_file_name(p: &Path) -> String {
+    p.file_name()
+        .unwrap()
+        .to_str()
+        .to_owned()
+        .ok_or("[ERR] Could not get file name")
+        // TODO : Handle error
+        .unwrap()
+        .to_string()
 }
