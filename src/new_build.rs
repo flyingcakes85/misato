@@ -83,6 +83,24 @@ pub fn discover_posts(handlebars: &mut Handlebars) {
     }
 }
 
+pub fn discover_layouts(handlebars: &mut Handlebars) {
+    if Path::new("posts").exists() {
+        for source_path in WalkDir::new("layouts") {
+            let source_path = source_path.unwrap();
+
+            if source_path.path().extension().and_then(OsStr::to_str) == Some("html")
+                || source_path.path().extension().and_then(OsStr::to_str) == Some("hbs")
+            {
+                let mut template_name = get_file_name(&source_path.path());
+                template_name.push_str("_layout");
+                handlebars
+                    .register_template_file(&template_name, &source_path.path())
+                    .unwrap();
+            }
+        }
+    }
+}
+
 fn toml_to_json(toml: Toml) -> Json {
     match toml {
         Toml::String(s) => Json::String(s),
