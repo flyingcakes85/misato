@@ -2,7 +2,7 @@
 
 use comrak::{markdown_to_html, ComrakOptions};
 use extract_frontmatter::Extractor;
-use handlebars::Handlebars;
+use handlebars::{to_json, Handlebars};
 use rsass::{compile_scss_path, output};
 use serde::Serialize;
 use serde_json::value::Map;
@@ -23,11 +23,42 @@ use toml::Value as Toml;
 use walkdir::WalkDir;
 
 pub fn build() {
-    let base_attributes = get_attributes();
+    fs::create_dir_all("target").unwrap();
+    let mut base_attributes = get_attributes();
 
     let mut handlebars = Handlebars::new();
 
-    discover_pages(&mut handlebars);
+    let mut renderlist_pages = Vec::<(String, PathBuf)>::new();
+    let mut renderlist_posts = Vec::<(String, PathBuf)>::new();
+
+    discover_pages(&mut handlebars, &mut renderlist_pages);
+    discover_posts(&mut handlebars, &mut renderlist_posts);
+
+    discover_layouts(&mut handlebars);
+
+    base_attributes.insert("title".to_string(), to_json("Test Title"));
+
+    render_pages(renderlist_pages, &handlebars, &base_attributes);
+}
+
+fn render_pages(
+    renderlist: Vec<(String, PathBuf)>,
+    handlebars: &Handlebars,
+    data: &Map<String, Json>,
+) {
+    println!("{:?}", renderlist);
+    println!("{:?}", handlebars);
+    println!("{:?}", data);
+    for (template_name, template_path) in renderlist {
+        let dest_path = template_path.to_str().unwrap().replace("pages/", "target/");
+        println!("{:?}", dest_path);
+
+        fs::write(
+            Path::new(&dest_path).with_extension("html"),
+            handlebars.render(&template_name, &data).unwrap(),
+        )
+        .unwrap();
+    }
 }
 
 fn get_attributes() -> Map<String, Json> {
@@ -49,7 +80,7 @@ fn get_attributes() -> Map<String, Json> {
     attributes
 }
 
-pub fn discover_pages(handlebars: &mut Handlebars) {
+pub fn discover_pages(handlebars: &mut Handlebars, renderlist: &mut Vec<(String, PathBuf)>) {
     if Path::new("pages").exists() {
         for source_path in WalkDir::new("pages") {
             let source_path = source_path.unwrap();
@@ -59,6 +90,7 @@ pub fn discover_pages(handlebars: &mut Handlebars) {
             {
                 let mut template_name = get_file_name(&source_path.path());
                 template_name.push_str("_page");
+                renderlist.push((template_name.clone(), source_path.path().to_path_buf()));
                 handlebars
                     .register_template_file(&template_name, &source_path.path())
                     .unwrap();
@@ -67,7 +99,7 @@ pub fn discover_pages(handlebars: &mut Handlebars) {
     }
 }
 
-pub fn discover_posts(handlebars: &mut Handlebars) {
+pub fn discover_posts(handlebars: &mut Handlebars, renderlist: &mut Vec<(String, PathBuf)>) {
     if Path::new("posts").exists() {
         for source_path in WalkDir::new("posts") {
             let source_path = source_path.unwrap();
@@ -75,6 +107,7 @@ pub fn discover_posts(handlebars: &mut Handlebars) {
             if source_path.path().extension().and_then(OsStr::to_str) == Some("md") {
                 let mut template_name = get_file_name(&source_path.path());
                 template_name.push_str("_post");
+                renderlist.push((template_name.clone(), source_path.path().to_path_buf()));
                 handlebars
                     .register_template_file(&template_name, &source_path.path())
                     .unwrap();
