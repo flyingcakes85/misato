@@ -122,7 +122,8 @@ fn toml_to_json(toml: Toml) -> Json {
 }
 
 fn get_file_name(p: &Path) -> String {
-    p.file_name()
+    Path::new(p.file_stem().unwrap())
+        .file_name()
         .unwrap()
         .to_str()
         .to_owned()
