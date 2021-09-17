@@ -1,6 +1,6 @@
 #![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
 
-use comrak::{markdown_to_html, ComrakOptions};
+use comrak::{markdown_to_html, plugins, ComrakOptions};
 use extract_frontmatter::Extractor;
 use handlebars::{to_json, Handlebars};
 use rsass::{compile_scss_path, output};
@@ -37,7 +37,7 @@ struct Post {
 
 pub fn build() {
     fs::create_dir_all("target").unwrap();
-    let mut base_attributes = get_attributes();
+    let mut base_attributes: Map<String, Json> = get_attributes();
 
     let mut handlebars = Handlebars::new();
 
@@ -69,6 +69,8 @@ pub fn build() {
 
     // render_pages(renderlist_pages, &handlebars, &base_attributes);
     // generate_css();
+
+    println!("done");
 }
 
 fn render_pages(
@@ -92,10 +94,11 @@ fn render_posts(
     renderlist: Vec<(String, PathBuf)>,
     handlebars: &Handlebars,
     data: &Map<String, Json>,
-) -> Vec<Post> {
-    let mut html_to_write: String = String::new();
-    let mut post_list: Vec<Post> = Vec::<Post>::new();
-    let mut post: Post;
+) -> Vec<Toml> {
+    let mut html_to_write: String;
+    let mut post_list: Vec<Toml> = Vec::<Toml>::new();
+    let comark_options = ComrakOptions::default();
+    let mut dest_path: PathBuf;
 
     for (_, template_path) in renderlist {
         // read the source md text
@@ -103,19 +106,171 @@ fn render_posts(
 
         // split source_md_data to front matter and actual text
         // front_matter is Toml
-        let (front_matter, md_text) = parse_front_matter(source_md_data);
+        let (front_matter, raw_md_text) = parse_front_matter(source_md_data);
+        post_list.push(front_matter.clone());
 
-        let md_text = md_text.trim().to_string();
+        let raw_md_text = raw_md_text.trim().to_string();
 
         // plug data has all attributes
         let mut plug_data: Map<String, Json> = data.clone();
 
-        // println!("{:#?}\n{}\n", plug_data, front_matter);
-
         for (k, v) in front_matter.as_table().unwrap() {
             plug_data.insert(k.to_string(), value_to_json(v));
         }
-        println!("{:#?}\n", plug_data);
+        // println!("{:#?}\n", plug_data);
+
+        // create a local clone of handlebars
+        let mut md_handlebars = handlebars.clone();
+
+        // register the raw markdown data
+        md_handlebars
+            .register_template_string("raw_markdown", raw_md_text)
+            .unwrap();
+
+        // render markdown with attributes
+        let plugged_md_text = md_handlebars.render("raw_markdown", &plug_data).unwrap();
+
+        // convert plugged markdown to html
+        let generated_html = markdown_to_html(&plugged_md_text, &comark_options);
+
+        // register the final markdown_data template
+        // at this point this it technically html
+        // but registering it as markdown_data makes
+        // sense for end user
+        md_handlebars
+            .register_template_string("markdown_data", &generated_html)
+            .unwrap();
+
+        dest_path = PathBuf::new();
+        dest_path.push("target");
+
+        // generate final html
+        // and set dest_path
+        if plug_data.contains_key("data") {
+            if plug_data["data"]
+                .as_object()
+                .unwrap()
+                .contains_key("layout")
+            {
+                // it has layout definition
+                html_to_write = md_handlebars
+                    .render(plug_data["data"]["layout"].as_str().unwrap(), &plug_data)
+                    .unwrap();
+            } else {
+                // no layout definition
+                // simply output html
+                html_to_write = generated_html;
+            }
+        } else {
+            // no layout definition
+            // simply output html
+            html_to_write = generated_html;
+        }
+        // plug_data["config"]["blog_path"] = plug_data["config"]["blog_path"].to_string()
+        println!("{}", plug_data["config"]["blog_path"].to_string());
+
+        if plug_data.contains_key("data") {
+            if plug_data["data"].as_object().unwrap().contains_key("path") {
+                //it has custom path
+                println!("it has custom path");
+                for p in plug_data["data"]["path"].to_string().split("/") {
+                    dest_path.push(p.to_string());
+                }
+            }
+
+            if plug_data.contains_key("config") {
+                if plug_data["config"]
+                    .as_object()
+                    .unwrap()
+                    .contains_key("blog_path")
+                {
+                    // does not have custom path defined
+                    println!("config path");
+                    md_handlebars
+                        .register_template_string(
+                            "blog_path_internal",
+                            plug_data["config"]["blog_path"].to_string(),
+                        )
+                        .unwrap();
+
+                    for p in md_handlebars
+                        .render("blog_path_internal", &plug_data)
+                        .unwrap()
+                        .split("/")
+                    {
+                        dest_path.push(p.to_string());
+                    }
+                }
+
+                println!("no config path");
+            } else {
+                // does not have custom path defined
+                println!("root generic path");
+                md_handlebars
+                    .register_template_string(
+                        "blog_path_internal",
+                        plug_data["config"]["blog_path"].to_string(),
+                    )
+                    .unwrap();
+
+                for p in md_handlebars
+                    .render("blog_path_internal", &plug_data)
+                    .unwrap()
+                    .split("/")
+                {
+                    dest_path.push(p.to_string());
+                }
+            }
+        } else if plug_data.contains_key("config") {
+            if plug_data["config"]
+                .as_object()
+                .unwrap()
+                .contains_key("blog_path")
+            {
+                // does not have custom path defined
+                println!("config path");
+                md_handlebars
+                    .register_template_string(
+                        "blog_path_internal",
+                        plug_data["config"]["blog_path"].to_string(),
+                    )
+                    .unwrap();
+
+                for p in md_handlebars
+                    .render("blog_path_internal", &plug_data)
+                    .unwrap()
+                    .split("/")
+                {
+                    dest_path.push(p.to_string());
+                }
+            }
+
+            println!("no config path");
+        } else {
+            // does not have custom path defined
+            println!("root generic path");
+            md_handlebars
+                .register_template_string(
+                    "blog_path_internal",
+                    plug_data["config"]["blog_path"].to_string(),
+                )
+                .unwrap();
+
+            for p in md_handlebars
+                .render("blog_path_internal", &plug_data)
+                .unwrap()
+                .split("/")
+            {
+                dest_path.push(p.to_string());
+            }
+        }
+
+        println!("dest path : {:#?}", dest_path);
+        println!("{:#?}", plug_data);
+
+        // write out the html file
+        fs::create_dir_all(&dest_path.parent().unwrap()).unwrap();
+        fs::write(Path::new(&dest_path).with_extension("html"), &html_to_write).unwrap();
     }
 
     post_list
@@ -225,6 +380,8 @@ fn parse_front_matter(source_data: String) -> (Toml, String) {
 
     (front_matter_toml, document)
 }
+
+// fn fm_p(fm: Toml) -> Post {}
 
 fn front_matter_toml_to_post(fm: Toml) -> Post {
     let front_matter = fm.as_table().unwrap();
