@@ -23,7 +23,7 @@ use toml::{to_vec, Deserializer};
 // use toml::Value;
 use walkdir::WalkDir;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Clone)]
 struct Post {
     title: String,
     subtitle: String,
@@ -49,13 +49,26 @@ pub fn build() {
 
     discover_layouts(&mut handlebars);
 
-    base_attributes.insert("title".to_string(), to_json("Test Title"));
+    let post_list = render_posts(renderlist_posts, &handlebars, &base_attributes);
+    // base_attributes.insert("categories".to_string(), serde_json::fropost_list);
+    // let s = String::from_utf8(serde_json::ser::to_vec_pretty(&post_list).unwrap()).unwrap();
+    // println!("{}", s);
+    // println!("post list is {:?}", post_list);
+
+    // println!("{:?}", post_list);
+
+    // base_attributes.insert(
+    //     "posts".to_string(),
+    //     serde_json::from_str(
+    //         &String::from_utf8(serde_json::ser::to_vec(&post_list).unwrap()).unwrap(),
+    //     )
+    //     .unwrap(),
+    // );
+
+    // println!("{:?}", base_attributes);
 
     // render_pages(renderlist_pages, &handlebars, &base_attributes);
-    let post_list = render_posts(renderlist_posts, &handlebars, &base_attributes);
-
-    println!("{:?}", post_list);
-    generate_css();
+    // generate_css();
 }
 
 fn render_pages(
@@ -63,12 +76,8 @@ fn render_pages(
     handlebars: &Handlebars,
     data: &Map<String, Json>,
 ) {
-    println!("{:?}", renderlist);
-    println!("{:?}", handlebars);
-    println!("{:?}", data);
     for (template_name, template_path) in renderlist {
         let dest_path = template_path.to_str().unwrap().replace("pages/", "target/");
-        println!("{:?}", dest_path);
 
         fs::write(
             Path::new(&dest_path).with_extension("html"),
@@ -78,7 +87,41 @@ fn render_pages(
     }
 }
 
+// render posts and return a vector of posts
 fn render_posts(
+    renderlist: Vec<(String, PathBuf)>,
+    handlebars: &Handlebars,
+    data: &Map<String, Json>,
+) -> Vec<Post> {
+    let mut html_to_write: String = String::new();
+    let mut post_list: Vec<Post> = Vec::<Post>::new();
+    let mut post: Post;
+
+    for (_, template_path) in renderlist {
+        // read the source md text
+        let source_md_data = fs::read_to_string(&template_path).unwrap();
+
+        // split source_md_data to front matter and actual text
+        // front_matter is Toml
+        let (front_matter, md_text) = parse_front_matter(source_md_data);
+
+        let md_text = md_text.trim().to_string();
+
+        // plug data has all attributes
+        let mut plug_data: Map<String, Json> = data.clone();
+
+        // println!("{:#?}\n{}\n", plug_data, front_matter);
+
+        for (k, v) in front_matter.as_table().unwrap() {
+            plug_data.insert(k.to_string(), value_to_json(v));
+        }
+        println!("{:#?}\n", plug_data);
+    }
+
+    post_list
+}
+
+fn bruh(
     renderlist: Vec<(String, PathBuf)>,
     handlebars: &Handlebars,
     data: &Map<String, Json>,
@@ -93,8 +136,9 @@ fn render_posts(
         let dest_path = template_path.to_str().unwrap().replace("posts/", "target/");
 
         // plug data contains all attributes to add to MD file
-        let (front_matter, source_data) = parse_front_matter(&source_data);
+        let (front_matter, source_data) = parse_front_matter(source_data);
         let mut plug_data = data.clone();
+
         // copy global attributes
         for m in front_matter.as_table() {
             for (k, v) in m {
@@ -102,9 +146,14 @@ fn render_posts(
             }
         }
 
+        println!("{:?}", plug_data);
+
         // populate the post list
         post = front_matter_toml_to_post(front_matter);
-        post_list.push(post);
+        post_list.push(post.clone());
+        // let post_t = post.clone();
+
+        // println!("{:?}", post);
 
         // Override title from markdown file if it exists
         if plug_data.contains_key("info") {
@@ -130,13 +179,6 @@ fn render_posts(
         md_handlebars
             .register_template_string("markdown_data", &html)
             .unwrap();
-        println!("{:?}", plug_data);
-        println!(
-            "{}",
-            md_handlebars
-                .render(plug_data["data"]["layout"].as_str().unwrap(), &plug_data)
-                .unwrap()
-        );
 
         // generate final html
         // check if layout exists
@@ -147,11 +189,9 @@ fn render_posts(
                 .contains_key("layout")
             {
                 // it has layout definition
-                println!("Writing html");
                 html_to_write = md_handlebars
                     .render(plug_data["data"]["layout"].as_str().unwrap(), &plug_data)
                     .unwrap();
-                // println!("{}", &html_to_write);
             } else {
                 // no layout definition
                 // simply output html
@@ -167,11 +207,12 @@ fn render_posts(
 }
 
 fn value_to_json(toml: &Toml) -> Json {
-    serde_json::from_str(&serde_json::to_string(&toml_to_json(toml.clone())).unwrap()).unwrap()
+    serde_json::from_str(&serde_json::to_string_pretty(&toml_to_json(toml.clone())).unwrap())
+        .unwrap()
 }
 
-fn parse_front_matter(source_data: &str) -> (Toml, String) {
-    let mut extractor = Extractor::new(source_data);
+fn parse_front_matter(source_data: String) -> (Toml, String) {
+    let mut extractor = Extractor::new(&source_data);
     extractor.select_by_terminator("+++");
     extractor.discard_first_line();
 
@@ -202,7 +243,13 @@ fn front_matter_toml_to_post(fm: Toml) -> Post {
             .unwrap()
             .contains_key("title")
         {
-            title = front_matter["info"]["title"].to_string();
+            title = front_matter["info"]["title"]
+                .to_string()
+                .strip_prefix("\"")
+                .unwrap()
+                .strip_suffix("\"")
+                .unwrap()
+                .to_string();
         }
 
         if front_matter["info"]
@@ -210,7 +257,13 @@ fn front_matter_toml_to_post(fm: Toml) -> Post {
             .unwrap()
             .contains_key("subtitle")
         {
-            subtitle = front_matter["info"]["subtitle"].to_string();
+            subtitle = front_matter["info"]["subtitle"]
+                .to_string()
+                .strip_prefix("\"")
+                .unwrap()
+                .strip_suffix("\"")
+                .unwrap()
+                .to_string();
         }
 
         if front_matter["info"]
@@ -218,7 +271,13 @@ fn front_matter_toml_to_post(fm: Toml) -> Post {
             .unwrap()
             .contains_key("author")
         {
-            author = front_matter["info"]["author"].to_string();
+            author = front_matter["info"]["author"]
+                .to_string()
+                .strip_prefix("\"")
+                .unwrap()
+                .strip_suffix("\"")
+                .unwrap()
+                .to_string();
         }
 
         if front_matter["info"]
@@ -308,8 +367,10 @@ fn get_attributes() -> Map<String, Json> {
         for t in c {
             attributes.insert(
                 t.0.to_string(),
-                serde_json::from_str(&serde_json::to_string(&toml_to_json(t.1.clone())).unwrap())
-                    .unwrap(),
+                serde_json::from_str(
+                    &serde_json::to_string_pretty(&toml_to_json(t.1.clone())).unwrap(),
+                )
+                .unwrap(),
             );
         }
     }
