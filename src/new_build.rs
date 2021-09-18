@@ -50,6 +50,8 @@ pub fn build() {
     discover_layouts(&mut handlebars);
 
     let post_list = render_posts(renderlist_posts, &handlebars, &base_attributes);
+
+    base_attributes.insert("posts".to_string(), toml_to_json(Toml::Array(post_list)));
     // base_attributes.insert("categories".to_string(), serde_json::fropost_list);
     // let s = String::from_utf8(serde_json::ser::to_vec_pretty(&post_list).unwrap()).unwrap();
     // println!("{}", s);
@@ -67,10 +69,10 @@ pub fn build() {
 
     // println!("{:?}", base_attributes);
 
-    // render_pages(renderlist_pages, &handlebars, &base_attributes);
-    // generate_css();
+    render_pages(renderlist_pages, &handlebars, &base_attributes);
+    generate_css();
 
-    println!("done");
+    println!("{:#?}", base_attributes);
 }
 
 fn render_pages(
@@ -100,14 +102,13 @@ fn render_posts(
     let comark_options = ComrakOptions::default();
     let mut dest_path: PathBuf;
 
-    for (_, template_path) in renderlist {
+    for (template_name, template_path) in renderlist {
         // read the source md text
         let source_md_data = fs::read_to_string(&template_path).unwrap();
 
         // split source_md_data to front matter and actual text
         // front_matter is Toml
         let (front_matter, raw_md_text) = parse_front_matter(source_md_data);
-        post_list.push(front_matter.clone());
 
         let raw_md_text = raw_md_text.trim().to_string();
 
@@ -141,11 +142,12 @@ fn render_posts(
             .register_template_string("markdown_data", &generated_html)
             .unwrap();
 
+        // rel_path = PathBuf::new();
         dest_path = PathBuf::new();
         dest_path.push("target");
 
         // generate final html
-        // and set dest_path
+        // and set rel_path
         if plug_data.contains_key("data") {
             if plug_data["data"]
                 .as_object()
@@ -167,13 +169,13 @@ fn render_posts(
             html_to_write = generated_html;
         }
         // plug_data["config"]["blog_path"] = plug_data["config"]["blog_path"].to_string()
-        println!("{}", plug_data["config"]["blog_path"].to_string());
+        println!("{}", plug_data["config"]["blog_path"].as_str().unwrap());
 
         if plug_data.contains_key("data") {
             if plug_data["data"].as_object().unwrap().contains_key("path") {
                 //it has custom path
                 println!("it has custom path");
-                for p in plug_data["data"]["path"].to_string().split("/") {
+                for p in plug_data["data"]["path"].as_str().unwrap().split("/") {
                     dest_path.push(p.to_string());
                 }
             }
@@ -189,7 +191,7 @@ fn render_posts(
                     md_handlebars
                         .register_template_string(
                             "blog_path_internal",
-                            plug_data["config"]["blog_path"].to_string(),
+                            plug_data["config"]["blog_path"].as_str().unwrap(),
                         )
                         .unwrap();
 
@@ -209,7 +211,7 @@ fn render_posts(
                 md_handlebars
                     .register_template_string(
                         "blog_path_internal",
-                        plug_data["config"]["blog_path"].to_string(),
+                        plug_data["config"]["blog_path"].as_str().unwrap(),
                     )
                     .unwrap();
 
@@ -232,7 +234,7 @@ fn render_posts(
                 md_handlebars
                     .register_template_string(
                         "blog_path_internal",
-                        plug_data["config"]["blog_path"].to_string(),
+                        plug_data["config"]["blog_path"].as_str().unwrap(),
                     )
                     .unwrap();
 
@@ -252,7 +254,7 @@ fn render_posts(
             md_handlebars
                 .register_template_string(
                     "blog_path_internal",
-                    plug_data["config"]["blog_path"].to_string(),
+                    plug_data["config"]["blog_path"].as_str().unwrap(),
                 )
                 .unwrap();
 
@@ -264,9 +266,46 @@ fn render_posts(
                 dest_path.push(p.to_string());
             }
         }
+        dest_path.push(template_name);
 
-        println!("dest path : {:#?}", dest_path);
-        println!("{:#?}", plug_data);
+        // println!("dest path : {:#?}", rel_path);
+        // println!("{:#?}", plug_data);
+        // dest_path.push(&rel_path);
+
+        // let mut f = front_matter.as_table().unwrap().clone();
+
+        // front_matter = front_matter
+        //     .as_table()
+        //     .unwrap()
+        //     .clone()
+        //     .insert(
+        //         "rel_path".to_string(),
+        //         Toml::String(String::from(rel_path.to_str().unwrap())),
+        //     )
+        //     .unwrap();
+
+        // f.insert(
+        //     "rel_path".to_string(),
+        //     Toml::String(String::from(rel_path.to_str().unwrap())),
+        // );
+        // .insert(
+        //     "rel_path".to_string(),
+        //     Toml::String(String::from(rel_path.to_str().unwrap())),
+        // )
+        // .unwrap();
+
+        // let mut front_toml = raw_front_matter.parse::<Document>().unwrap();
+
+        // front_toml["data"]["rel_path"] = value(rel_path.to_str().unwrap());
+        // println!("{:#?}", front_toml);
+
+        // println!(
+        //     "c'est le front  matter :  \n{:#?}\n front matter over",
+        //     front_matter
+        // );
+        post_list.push(front_matter.clone());
+
+        println!("{:#?}", dest_path);
 
         // write out the html file
         fs::create_dir_all(&dest_path.parent().unwrap()).unwrap();
