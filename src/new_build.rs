@@ -72,7 +72,7 @@ pub fn build() {
     render_pages(renderlist_pages, &handlebars, &base_attributes);
     generate_css();
 
-    println!("{:#?}", base_attributes);
+    // println!("{:#?}", base_attributes);
 }
 
 fn render_pages(
@@ -169,103 +169,11 @@ fn render_posts(
             html_to_write = generated_html;
         }
         // plug_data["config"]["blog_path"] = plug_data["config"]["blog_path"].to_string()
-        println!("{}", plug_data["config"]["blog_path"].as_str().unwrap());
+        // println!("{}", plug_data["config"]["blog_path"].as_str().unwrap());
 
-        if plug_data.contains_key("data") {
-            if plug_data["data"].as_object().unwrap().contains_key("path") {
-                //it has custom path
-                println!("it has custom path");
-                for p in plug_data["data"]["path"].as_str().unwrap().split("/") {
-                    dest_path.push(p.to_string());
-                }
-            }
+        dest_path.push(get_dest_path(&plug_data, &mut md_handlebars));
+        println!("dest path we got : {:#?}", dest_path);
 
-            if plug_data.contains_key("config") {
-                if plug_data["config"]
-                    .as_object()
-                    .unwrap()
-                    .contains_key("blog_path")
-                {
-                    // does not have custom path defined
-                    println!("config path");
-                    md_handlebars
-                        .register_template_string(
-                            "blog_path_internal",
-                            plug_data["config"]["blog_path"].as_str().unwrap(),
-                        )
-                        .unwrap();
-
-                    for p in md_handlebars
-                        .render("blog_path_internal", &plug_data)
-                        .unwrap()
-                        .split("/")
-                    {
-                        dest_path.push(p.to_string());
-                    }
-                }
-
-                println!("no config path");
-            } else {
-                // does not have custom path defined
-                println!("root generic path");
-                md_handlebars
-                    .register_template_string(
-                        "blog_path_internal",
-                        plug_data["config"]["blog_path"].as_str().unwrap(),
-                    )
-                    .unwrap();
-
-                for p in md_handlebars
-                    .render("blog_path_internal", &plug_data)
-                    .unwrap()
-                    .split("/")
-                {
-                    dest_path.push(p.to_string());
-                }
-            }
-        } else if plug_data.contains_key("config") {
-            if plug_data["config"]
-                .as_object()
-                .unwrap()
-                .contains_key("blog_path")
-            {
-                // does not have custom path defined
-                println!("config path");
-                md_handlebars
-                    .register_template_string(
-                        "blog_path_internal",
-                        plug_data["config"]["blog_path"].as_str().unwrap(),
-                    )
-                    .unwrap();
-
-                for p in md_handlebars
-                    .render("blog_path_internal", &plug_data)
-                    .unwrap()
-                    .split("/")
-                {
-                    dest_path.push(p.to_string());
-                }
-            }
-
-            println!("no config path");
-        } else {
-            // does not have custom path defined
-            println!("root generic path");
-            md_handlebars
-                .register_template_string(
-                    "blog_path_internal",
-                    plug_data["config"]["blog_path"].as_str().unwrap(),
-                )
-                .unwrap();
-
-            for p in md_handlebars
-                .render("blog_path_internal", &plug_data)
-                .unwrap()
-                .split("/")
-            {
-                dest_path.push(p.to_string());
-            }
-        }
         dest_path.push(template_name);
 
         // println!("dest path : {:#?}", rel_path);
@@ -305,7 +213,7 @@ fn render_posts(
         // );
         post_list.push(front_matter.clone());
 
-        println!("{:#?}", dest_path);
+        println!("end of day file to write {:#?}", dest_path);
 
         // write out the html file
         fs::create_dir_all(&dest_path.parent().unwrap()).unwrap();
@@ -458,7 +366,7 @@ fn parse_front_matter(source_data: String) -> (Toml, String) {
 // }
 
 // checks if keys exists in 2 level json map
-fn json_map_key_exists(data: &Map<String, Json>, k1: &String, k2: &String) -> bool {
+fn json_map_key_exists(data: &Map<String, Json>, k1: &str, k2: &str) -> bool {
     if data.contains_key(k1) {
         if data[k1].as_object().unwrap().contains_key(k2) {
             return true;
@@ -466,6 +374,40 @@ fn json_map_key_exists(data: &Map<String, Json>, k1: &String, k2: &String) -> bo
         return false;
     }
     false
+}
+
+fn get_dest_path(data: &Map<String, Json>, handlebars: &mut Handlebars) -> PathBuf {
+    let mut dest_path = PathBuf::new();
+
+    if json_map_key_exists(&data, "data", "path") {
+        println!("found custom path in post");
+        for p in data["data"]["path"].as_str().unwrap().split("/") {
+            dest_path.push(p.to_string());
+        }
+    } else if json_map_key_exists(&data, "config", "blog_path") {
+        println!("Using path defined in global config");
+        handlebars
+            .register_template_string(
+                "blog_path_internal",
+                data["config"]["blog_path"].as_str().unwrap(),
+            )
+            .unwrap();
+
+        for p in handlebars
+            .render("blog_path_internal", &data)
+            .unwrap()
+            .split("/")
+        {
+            dest_path.push(p.to_string());
+        }
+    } else {
+        println!("[ERR]No post path found");
+        // TODO : Don't make app exit when no path found;
+        // use a generic path in this case
+        exit(0);
+    }
+
+    dest_path
 }
 
 fn get_attributes() -> Map<String, Json> {
