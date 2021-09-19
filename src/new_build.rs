@@ -101,6 +101,7 @@ fn render_posts(
     let mut post_list: Vec<Toml> = Vec::<Toml>::new();
     let comark_options = ComrakOptions::default();
     let mut dest_path: PathBuf;
+    let mut rel_path: PathBuf;
 
     for (template_name, template_path) in renderlist {
         // read the source md text
@@ -148,37 +149,25 @@ fn render_posts(
 
         // generate final html
         // and set rel_path
-        if plug_data.contains_key("data") {
-            if plug_data["data"]
-                .as_object()
+        html_to_write = if json_map_key_exists(&plug_data, "data", "layout") {
+            md_handlebars
+                .render(front_matter["data"]["layout"].as_str().unwrap(), &plug_data)
                 .unwrap()
-                .contains_key("layout")
-            {
-                // it has layout definition
-                html_to_write = md_handlebars
-                    .render(plug_data["data"]["layout"].as_str().unwrap(), &plug_data)
-                    .unwrap();
-            } else {
-                // no layout definition
-                // simply output html
-                html_to_write = generated_html;
-            }
         } else {
-            // no layout definition
-            // simply output html
-            html_to_write = generated_html;
-        }
+            generated_html
+        };
+
         // plug_data["config"]["blog_path"] = plug_data["config"]["blog_path"].to_string()
         // println!("{}", plug_data["config"]["blog_path"].as_str().unwrap());
 
-        dest_path.push(get_dest_path(&plug_data, &mut md_handlebars));
+        // TODO : this generates a relative path
+        // configure it to use complete domain path
+        rel_path = get_dest_path(&plug_data, &mut md_handlebars);
+        dest_path.push(rel_path.clone());
+
         println!("dest path we got : {:#?}", dest_path);
 
         dest_path.push(template_name);
-
-        // println!("dest path : {:#?}", rel_path);
-        // println!("{:#?}", plug_data);
-        // dest_path.push(&rel_path);
 
         // let mut f = front_matter.as_table().unwrap().clone();
 
