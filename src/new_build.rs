@@ -1,4 +1,4 @@
-#![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
+// #![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
 
 use comrak::{markdown_to_html, plugins, ComrakOptions};
 use extract_frontmatter::Extractor;
@@ -23,17 +23,17 @@ use toml::{to_vec, Deserializer};
 // use toml::Value;
 use walkdir::WalkDir;
 
-#[derive(Debug, Serialize, Clone)]
-struct Post {
-    title: String,
-    subtitle: String,
-    author: String,
-    layout: String,
-    path: String,
-    banner: String,
-    categories: Vec<String>,
-    styles: Vec<String>,
-}
+// #[derive(Debug, Serialize, Clone)]
+// struct Post {
+//     title: String,
+//     subtitle: String,
+//     author: String,
+//     layout: String,
+//     path: String,
+//     banner: String,
+//     categories: Vec<String>,
+//     styles: Vec<String>,
+// }
 
 pub fn build() {
     fs::create_dir_all("target").unwrap();
@@ -337,125 +337,125 @@ fn parse_front_matter(source_data: String) -> (Toml, String) {
 
 // fn fm_p(fm: Toml) -> Post {}
 
-fn front_matter_toml_to_post(fm: Toml) -> Post {
-    let front_matter = fm.as_table().unwrap();
-    let mut title = String::new();
-    let mut subtitle = String::new();
-    let mut author = String::new();
-    let mut layout = String::new();
-    let mut path = String::new();
-    let mut banner = String::new();
-    let mut categories = Vec::<String>::new();
-    let mut styles = Vec::<String>::new();
+// fn front_matter_toml_to_post(fm: Toml) -> Post {
+//     let front_matter = fm.as_table().unwrap();
+//     let mut title = String::new();
+//     let mut subtitle = String::new();
+//     let mut author = String::new();
+//     let mut layout = String::new();
+//     let mut path = String::new();
+//     let mut banner = String::new();
+//     let mut categories = Vec::<String>::new();
+//     let mut styles = Vec::<String>::new();
 
-    if front_matter.contains_key("info") {
-        if front_matter["info"]
-            .as_table()
-            .unwrap()
-            .contains_key("title")
-        {
-            title = front_matter["info"]["title"]
-                .to_string()
-                .strip_prefix("\"")
-                .unwrap()
-                .strip_suffix("\"")
-                .unwrap()
-                .to_string();
-        }
+//     if front_matter.contains_key("info") {
+//         if front_matter["info"]
+//             .as_table()
+//             .unwrap()
+//             .contains_key("title")
+//         {
+//             title = front_matter["info"]["title"]
+//                 .to_string()
+//                 .strip_prefix("\"")
+//                 .unwrap()
+//                 .strip_suffix("\"")
+//                 .unwrap()
+//                 .to_string();
+//         }
 
-        if front_matter["info"]
-            .as_table()
-            .unwrap()
-            .contains_key("subtitle")
-        {
-            subtitle = front_matter["info"]["subtitle"]
-                .to_string()
-                .strip_prefix("\"")
-                .unwrap()
-                .strip_suffix("\"")
-                .unwrap()
-                .to_string();
-        }
+//         if front_matter["info"]
+//             .as_table()
+//             .unwrap()
+//             .contains_key("subtitle")
+//         {
+//             subtitle = front_matter["info"]["subtitle"]
+//                 .to_string()
+//                 .strip_prefix("\"")
+//                 .unwrap()
+//                 .strip_suffix("\"")
+//                 .unwrap()
+//                 .to_string();
+//         }
 
-        if front_matter["info"]
-            .as_table()
-            .unwrap()
-            .contains_key("author")
-        {
-            author = front_matter["info"]["author"]
-                .to_string()
-                .strip_prefix("\"")
-                .unwrap()
-                .strip_suffix("\"")
-                .unwrap()
-                .to_string();
-        }
+//         if front_matter["info"]
+//             .as_table()
+//             .unwrap()
+//             .contains_key("author")
+//         {
+//             author = front_matter["info"]["author"]
+//                 .to_string()
+//                 .strip_prefix("\"")
+//                 .unwrap()
+//                 .strip_suffix("\"")
+//                 .unwrap()
+//                 .to_string();
+//         }
 
-        if front_matter["info"]
-            .as_table()
-            .unwrap()
-            .contains_key("categories")
-        {
-            categories = front_matter["info"]["categories"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|c| c.to_string())
-                .collect();
-        }
-    }
+//         if front_matter["info"]
+//             .as_table()
+//             .unwrap()
+//             .contains_key("categories")
+//         {
+//             categories = front_matter["info"]["categories"]
+//                 .as_array()
+//                 .unwrap()
+//                 .iter()
+//                 .map(|c| c.to_string())
+//                 .collect();
+//         }
+//     }
 
-    if front_matter.contains_key("data") {
-        if front_matter["data"]
-            .as_table()
-            .unwrap()
-            .contains_key("styles")
-        {
-            styles = front_matter["data"]["styles"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|c| c.to_string())
-                .collect();
-        }
+//     if front_matter.contains_key("data") {
+//         if front_matter["data"]
+//             .as_table()
+//             .unwrap()
+//             .contains_key("styles")
+//         {
+//             styles = front_matter["data"]["styles"]
+//                 .as_array()
+//                 .unwrap()
+//                 .iter()
+//                 .map(|c| c.to_string())
+//                 .collect();
+//         }
 
-        if front_matter["data"]
-            .as_table()
-            .unwrap()
-            .contains_key("layout")
-        {
-            layout = front_matter["data"]["layout"].to_string();
-        }
+//         if front_matter["data"]
+//             .as_table()
+//             .unwrap()
+//             .contains_key("layout")
+//         {
+//             layout = front_matter["data"]["layout"].to_string();
+//         }
 
-        if front_matter["data"]
-            .as_table()
-            .unwrap()
-            .contains_key("path")
-        {
-            path = front_matter["data"]["path"].to_string();
-        }
+//         if front_matter["data"]
+//             .as_table()
+//             .unwrap()
+//             .contains_key("path")
+//         {
+//             path = front_matter["data"]["path"].to_string();
+//         }
 
-        if front_matter["data"]
-            .as_table()
-            .unwrap()
-            .contains_key("banner")
-        {
-            banner = front_matter["data"]["banner"].to_string();
-        }
-    }
+//         if front_matter["data"]
+//             .as_table()
+//             .unwrap()
+//             .contains_key("banner")
+//         {
+//             banner = front_matter["data"]["banner"].to_string();
+//         }
+//     }
 
-    let p: Post = Post {
-        title,
-        subtitle,
-        author,
-        layout,
-        path,
-        banner,
-        categories,
-        styles,
-    };
-    p
-}
+//     let p: Post = Post {
+//         title,
+//         subtitle,
+//         author,
+//         layout,
+//         path,
+//         banner,
+//         categories,
+//         styles,
+//     };
+//     p
+// }
 
 // checks if keys exists in 2 level json map
 fn json_map_key_exists(data: &Map<String, Json>, k1: &String, k2: &String) -> bool {
