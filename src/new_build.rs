@@ -109,20 +109,43 @@ fn render_posts(
 
         // split source_md_data to front matter and actual text
         // front_matter is Toml
-        let (front_matter, raw_md_text) = parse_front_matter(source_md_data);
+        let (mut front_matter, raw_md_text) = parse_front_matter(source_md_data);
 
         let raw_md_text = raw_md_text.trim().to_string();
 
         // plug data has all attributes
         let mut plug_data: Map<String, Json> = data.clone();
 
-        for (k, v) in front_matter.as_table().unwrap() {
-            plug_data.insert(k.to_string(), value_to_json(v));
-        }
-        // println!("{:#?}\n", plug_data);
+        // rel_path = PathBuf::new();
+        dest_path = PathBuf::new();
+        dest_path.push("target");
 
         // create a local clone of handlebars
         let mut md_handlebars = handlebars.clone();
+
+        // println!("froh {}", rel_path.to_str().unwrap());
+        // front_matter["data"].as_table_mut().unwrap().clone().insert(
+        //     "rel_path".to_string(),
+        //     Toml::String(String::from(rel_path.to_str().unwrap())),
+        // );
+
+        // println!("{:#?}\n", front_matter);
+
+        // TODO : this generates a relative path
+        // configure it to use complete domain path
+        rel_path = get_dest_path(&plug_data, &mut md_handlebars);
+        rel_path.push(template_name);
+        rel_path.set_extension("html");
+        dest_path.push(rel_path.clone());
+
+        for (k, v) in front_matter.as_table().unwrap() {
+            plug_data.insert(k.to_string(), value_to_json(v));
+        }
+
+        plug_data["data"].as_object_mut().unwrap().insert(
+            "rel_path".to_string(),
+            Json::String(String::from(rel_path.to_str().unwrap())),
+        );
 
         // register the raw markdown data
         md_handlebars
@@ -143,10 +166,6 @@ fn render_posts(
             .register_template_string("markdown_data", &generated_html)
             .unwrap();
 
-        // rel_path = PathBuf::new();
-        dest_path = PathBuf::new();
-        dest_path.push("target");
-
         // generate final html
         // and set rel_path
         html_to_write = if json_map_key_exists(&plug_data, "data", "layout") {
@@ -157,56 +176,15 @@ fn render_posts(
             generated_html
         };
 
-        // plug_data["config"]["blog_path"] = plug_data["config"]["blog_path"].to_string()
-        // println!("{}", plug_data["config"]["blog_path"].as_str().unwrap());
-
-        // TODO : this generates a relative path
-        // configure it to use complete domain path
-        rel_path = get_dest_path(&plug_data, &mut md_handlebars);
-        dest_path.push(rel_path.clone());
-
         println!("dest path we got : {:#?}", dest_path);
 
-        dest_path.push(template_name);
-
-        // let mut f = front_matter.as_table().unwrap().clone();
-
-        // front_matter = front_matter
-        //     .as_table()
-        //     .unwrap()
-        //     .clone()
-        //     .insert(
-        //         "rel_path".to_string(),
-        //         Toml::String(String::from(rel_path.to_str().unwrap())),
-        //     )
-        //     .unwrap();
-
-        // f.insert(
-        //     "rel_path".to_string(),
-        //     Toml::String(String::from(rel_path.to_str().unwrap())),
-        // );
-        // .insert(
-        //     "rel_path".to_string(),
-        //     Toml::String(String::from(rel_path.to_str().unwrap())),
-        // )
-        // .unwrap();
-
-        // let mut front_toml = raw_front_matter.parse::<Document>().unwrap();
-
-        // front_toml["data"]["rel_path"] = value(rel_path.to_str().unwrap());
-        // println!("{:#?}", front_toml);
-
-        // println!(
-        //     "c'est le front  matter :  \n{:#?}\n front matter over",
-        //     front_matter
-        // );
         post_list.push(front_matter.clone());
 
         println!("end of day file to write {:#?}", dest_path);
 
         // write out the html file
         fs::create_dir_all(&dest_path.parent().unwrap()).unwrap();
-        fs::write(Path::new(&dest_path).with_extension("html"), &html_to_write).unwrap();
+        fs::write(&dest_path, &html_to_write).unwrap();
     }
 
     post_list
