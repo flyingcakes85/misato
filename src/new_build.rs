@@ -130,9 +130,9 @@ fn render_posts(
             plug_data.insert(k.to_string(), value_to_json(v));
         }
 
-        plug_data["data"].as_object_mut().unwrap().insert(
+        front_matter["data"].as_table_mut().unwrap().insert(
             "rel_path".to_string(),
-            Json::String(String::from(rel_path.to_str().unwrap())),
+            Toml::String(String::from(rel_path.to_str().unwrap())),
         );
 
         // register the raw markdown data
