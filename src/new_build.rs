@@ -91,7 +91,7 @@ fn render_posts(
     let mut dest_path: PathBuf;
     let mut rel_path: PathBuf;
 
-    for (template_name, template_path) in renderlist {
+    for (file_name, template_path) in renderlist {
         // read the source md text
         let source_md_data = fs::read_to_string(&template_path).unwrap();
 
@@ -119,16 +119,15 @@ fn render_posts(
 
         // println!("{:#?}\n", front_matter);
 
-        // TODO : this generates a relative path
-        // configure it to use complete domain path
-        rel_path = get_dest_path(&plug_data, &mut md_handlebars);
-        rel_path.push(template_name);
-        rel_path.set_extension("html");
-        dest_path.push(rel_path.clone());
-
         for (k, v) in front_matter.as_table().unwrap() {
             plug_data.insert(k.to_string(), value_to_json(v));
         }
+
+        // TODO : this generates a relative path
+        // configure it to use complete domain path
+        rel_path = get_dest_path(&plug_data, &mut md_handlebars, file_name);
+        rel_path.set_extension("html");
+        dest_path.push(rel_path.clone());
 
         front_matter["data"].as_table_mut().unwrap().insert(
             "rel_path".to_string(),
@@ -209,12 +208,16 @@ fn json_map_key_exists(data: &Map<String, Json>, k1: &str, k2: &str) -> bool {
     false
 }
 
-fn get_dest_path(data: &Map<String, Json>, handlebars: &mut Handlebars) -> PathBuf {
+fn get_dest_path(
+    data: &Map<String, Json>,
+    handlebars: &mut Handlebars,
+    file_name: String,
+) -> PathBuf {
     let mut dest_path = PathBuf::new();
 
-    if json_map_key_exists(&data, "data", "path") {
+    if json_map_key_exists(&data, "data", "post_path") {
         println!("found custom path in post");
-        for p in data["data"]["path"].as_str().unwrap().split("/") {
+        for p in data["data"]["post_path"].as_str().unwrap().split("/") {
             dest_path.push(p.to_string());
         }
     } else if json_map_key_exists(&data, "config", "blog_path") {
@@ -233,6 +236,8 @@ fn get_dest_path(data: &Map<String, Json>, handlebars: &mut Handlebars) -> PathB
         {
             dest_path.push(p.to_string());
         }
+
+        dest_path.push(file_name);
     } else {
         println!("[ERR]No post path found");
         // TODO : Don't make app exit when no path found;
