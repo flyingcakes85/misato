@@ -47,7 +47,7 @@ pub fn build() {
     base_attributes.insert("posts".to_string(), toml_to_json(Toml::Array(post_list)));
 
     render_pages(renderlist_pages, &handlebars, &base_attributes);
-    generate_css();
+    generate_css(base_attributes["config"]["scss"].as_array().unwrap());
 }
 
 // Render pagse (html or hbs)
@@ -362,14 +362,74 @@ fn get_file_name(p: &Path) -> String {
         .to_string()
 }
 
-/// Generates CSS from SASS
-fn generate_css() {
-    // TODO : replace this placeholder with actual SASS generation
-    for p in WalkDir::new("styles") {
-        let p = p.unwrap();
-        let p = p.path();
-        if p.extension().and_then(OsStr::to_str) == Some("css") {
-            fs::copy(p, p.to_str().unwrap().replace("styles/", "target/")).unwrap();
+/// Generate PathBuf from a unix path (forward slash)
+fn path_from_string(path_str: &str) -> PathBuf {
+    let mut path = PathBuf::new();
+    for p in path_str.split("/") {
+        path.push(p);
+    }
+
+    path
+}
+
+/// Replace prefix of a PathBuf
+fn switch_path_prefix(path: &PathBuf, old_prefix: &str, new_prefix: &str) -> PathBuf {
+    let mut final_path = PathBuf::new();
+    final_path.push(new_prefix);
+
+    for p in path
+        .clone()
+        .to_str()
+        .unwrap()
+        .to_string()
+        .strip_prefix(old_prefix)
+        .unwrap()
+        .split("/")
+    {
+        final_path.push(p);
+    }
+    final_path
+}
+
+/// Generates CSS from SCSS
+/// Copies CSS files as they are
+fn generate_css(scss_list: &Vec<Json>) {
+    // first copy the CSS files
+    for source_path in WalkDir::new("styles") {
+        let source_path = source_path.unwrap();
+        let source_path = source_path.path();
+
+        if source_path.extension().and_then(OsStr::to_str) == Some("css") {
+            let dest_path = switch_path_prefix(&source_path.to_path_buf(), "styles", "target");
+
+            fs::copy(source_path, dest_path).unwrap();
         }
+    }
+
+    // Now work on the SCSS files
+    // Create a list of paths of SCSS files
+    let mut scss_to_render = Vec::<PathBuf>::new();
+    for entry in scss_list {
+        let e_path = entry.as_str().unwrap();
+        let e_path = path_from_string(e_path);
+
+        let mut scss_path = PathBuf::new();
+        scss_path.push("styles");
+        scss_path.push(e_path);
+        scss_to_render.push(scss_path);
+    }
+
+    // Define the format options for SCSS generator
+    let scss_format = output::Format {
+        style: output::Style::Compressed,
+        ..Default::default()
+    };
+
+    // Iterate thourgh the list and render one by one
+    for scss_file in scss_to_render {
+        let css = compile_scss_path(&scss_file, scss_format).unwrap();
+        let dest_path = switch_path_prefix(&scss_file.to_path_buf(), "styles", "target");
+
+        fs::write(dest_path, css).unwrap();
     }
 }
