@@ -22,13 +22,21 @@ use walkdir::WalkDir;
 
 pub fn build() {
     fs::create_dir_all("target").unwrap();
+
+    // This will be the main attributes entity.
     let mut base_attributes: Map<String, Json> = get_attributes();
 
+    // Handlebars is the main template managing part.
+    // This instance of handlebars will be passed
+    // around to functions that will clone it and
+    // use for their funcitonality. This allows
+    // easy overriding of attributes.
     let mut handlebars = Handlebars::new();
 
     let mut renderlist_pages = Vec::<(String, PathBuf)>::new();
     let mut renderlist_posts = Vec::<(String, PathBuf)>::new();
 
+    // discover and get the renderlists
     discover_pages(&mut handlebars, &mut renderlist_pages);
     discover_posts(&mut handlebars, &mut renderlist_posts);
 
@@ -42,6 +50,7 @@ pub fn build() {
     generate_css();
 }
 
+// Render pagse (html or hbs)
 fn render_pages(
     renderlist: Vec<(String, PathBuf)>,
     handlebars: &Handlebars,
@@ -58,7 +67,7 @@ fn render_pages(
     }
 }
 
-// render posts and return a vector of posts
+// Render posts and return a vector containing front matter
 fn render_posts(
     renderlist: Vec<(String, PathBuf)>,
     handlebars: &Handlebars,
@@ -144,11 +153,14 @@ fn render_posts(
     post_list
 }
 
+// Utility function to convert Toml Value to Json Value
 fn value_to_json(toml: &Toml) -> Json {
     serde_json::from_str(&serde_json::to_string_pretty(&toml_to_json(toml.clone())).unwrap())
         .unwrap()
 }
 
+// Parse the front matter and return as Toml Value
+// We eventually convert it to a Json Value
 fn parse_front_matter(source_data: String) -> (Toml, String) {
     let mut extractor = Extractor::new(&source_data);
     extractor.select_by_terminator("+++");
@@ -182,12 +194,15 @@ fn get_dest_path(
 ) -> PathBuf {
     let mut dest_path = PathBuf::new();
 
+    // Following the preference, first check override in the post itself
     if json_map_key_exists(&data, "data", "post_path") {
         println!("found custom path in post");
         for p in data["data"]["post_path"].as_str().unwrap().split("/") {
             dest_path.push(p.to_string());
         }
-    } else if json_map_key_exists(&data, "config", "blog_path") {
+    }
+    // if no overrides then use the global path in config.toml
+    else if json_map_key_exists(&data, "config", "blog_path") {
         println!("Using path defined in global config");
         handlebars
             .register_template_string(
@@ -204,8 +219,13 @@ fn get_dest_path(
             dest_path.push(p.to_string());
         }
 
+        // manually push the file name because
+        // blog_path only defines the folder
         dest_path.push(file_name);
-    } else {
+    }
+    // not having path in config.toml is an error
+    // but we'll handle it. Todo.
+    else {
         println!("[ERR] No post path found");
         // TODO : Don't make app exit when no path found;
         // use a generic path in this case
@@ -215,6 +235,9 @@ fn get_dest_path(
     dest_path
 }
 
+/// Reads global attributes from config.toml in project root
+/// Returns as a map of string to json
+/// because we feed that to handlebars
 fn get_attributes() -> Map<String, Json> {
     let mut attributes: Map<String, Json> = Map::new();
 
@@ -236,15 +259,20 @@ fn get_attributes() -> Map<String, Json> {
     attributes
 }
 
+/// Searches for available HTML pages and registers them
 pub fn discover_pages(handlebars: &mut Handlebars, renderlist: &mut Vec<(String, PathBuf)>) {
     if Path::new("pages").exists() {
         for source_path in WalkDir::new("pages") {
             let source_path = source_path.unwrap();
 
+            // File extension doesn't matter, but we will read only html or hbs files
             if source_path.path().extension().and_then(OsStr::to_str) == Some("html")
                 || source_path.path().extension().and_then(OsStr::to_str) == Some("hbs")
             {
                 let mut template_name = get_file_name(&source_path.path());
+
+                // suffix name with "_pages" to prevent
+                // possible clash with other temlpates
                 template_name.push_str("_page");
                 renderlist.push((template_name.clone(), source_path.path().to_path_buf()));
                 handlebars
@@ -255,6 +283,8 @@ pub fn discover_pages(handlebars: &mut Handlebars, renderlist: &mut Vec<(String,
     }
 }
 
+/// Searches for available md posts and registers them
+/// Also returns a vector with filenames and their paths
 pub fn discover_posts(handlebars: &mut Handlebars, renderlist: &mut Vec<(String, PathBuf)>) {
     if Path::new("posts").exists() {
         for source_path in WalkDir::new("posts") {
@@ -262,6 +292,9 @@ pub fn discover_posts(handlebars: &mut Handlebars, renderlist: &mut Vec<(String,
 
             if source_path.path().extension().and_then(OsStr::to_str) == Some("md") {
                 let mut template_name = get_file_name(&source_path.path());
+
+                // suffix name with "_post" to prevent
+                // possible clash with other temlpates
                 template_name.push_str("_post");
                 renderlist.push((template_name.clone(), source_path.path().to_path_buf()));
                 handlebars
@@ -272,15 +305,20 @@ pub fn discover_posts(handlebars: &mut Handlebars, renderlist: &mut Vec<(String,
     }
 }
 
+/// Searches for available layouts and registers them
 pub fn discover_layouts(handlebars: &mut Handlebars) {
     if Path::new("layouts").exists() {
         for source_path in WalkDir::new("layouts") {
             let source_path = source_path.unwrap();
 
+            // File extension doesn't matter, but we will read only html or hbs files
             if source_path.path().extension().and_then(OsStr::to_str) == Some("html")
                 || source_path.path().extension().and_then(OsStr::to_str) == Some("hbs")
             {
                 let mut template_name = get_file_name(&source_path.path());
+
+                // suffix name with "_layout" to prevent
+                // possible clash with other temlpates
                 template_name.push_str("_layout");
                 handlebars
                     .register_template_file(&template_name, &source_path.path())
@@ -290,6 +328,7 @@ pub fn discover_layouts(handlebars: &mut Handlebars) {
     }
 }
 
+/// Converts Toml Value to Json Value
 fn toml_to_json(toml: Toml) -> Json {
     match toml {
         Toml::String(s) => Json::String(s),
@@ -310,6 +349,7 @@ fn toml_to_json(toml: Toml) -> Json {
     }
 }
 
+/// Gets file name from a file path
 fn get_file_name(p: &Path) -> String {
     Path::new(p.file_stem().unwrap())
         .file_name()
@@ -322,7 +362,9 @@ fn get_file_name(p: &Path) -> String {
         .to_string()
 }
 
+/// Generates CSS from SASS
 fn generate_css() {
+    // TODO : replace this placeholder with actual SASS generation
     for p in WalkDir::new("styles") {
         let p = p.unwrap();
         let p = p.path();
