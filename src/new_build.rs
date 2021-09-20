@@ -1,5 +1,3 @@
-// #![cfg_attr(debug_assertions, allow(dead_code, unused_imports))]
-
 use comrak::{markdown_to_html, plugins, ComrakOptions};
 use extract_frontmatter::Extractor;
 use handlebars::{to_json, Handlebars};
@@ -20,7 +18,6 @@ use std::{
 };
 use toml::Value as Toml;
 use toml::{to_vec, Deserializer};
-// use toml::Value;
 use walkdir::WalkDir;
 
 pub fn build() {
@@ -40,27 +37,9 @@ pub fn build() {
     let post_list = render_posts(renderlist_posts, &handlebars, &base_attributes);
 
     base_attributes.insert("posts".to_string(), toml_to_json(Toml::Array(post_list)));
-    // base_attributes.insert("categories".to_string(), serde_json::fropost_list);
-    // let s = String::from_utf8(serde_json::ser::to_vec_pretty(&post_list).unwrap()).unwrap();
-    // println!("{}", s);
-    // println!("post list is {:?}", post_list);
-
-    // println!("{:?}", post_list);
-
-    // base_attributes.insert(
-    //     "posts".to_string(),
-    //     serde_json::from_str(
-    //         &String::from_utf8(serde_json::ser::to_vec(&post_list).unwrap()).unwrap(),
-    //     )
-    //     .unwrap(),
-    // );
-
-    // println!("{:?}", base_attributes);
 
     render_pages(renderlist_pages, &handlebars, &base_attributes);
     generate_css();
-
-    // println!("{:#?}", base_attributes);
 }
 
 fn render_pages(
@@ -111,14 +90,6 @@ fn render_posts(
         // create a local clone of handlebars
         let mut md_handlebars = handlebars.clone();
 
-        // println!("froh {}", rel_path.to_str().unwrap());
-        // front_matter["data"].as_table_mut().unwrap().clone().insert(
-        //     "rel_path".to_string(),
-        //     Toml::String(String::from(rel_path.to_str().unwrap())),
-        // );
-
-        // println!("{:#?}\n", front_matter);
-
         for (k, v) in front_matter.as_table().unwrap() {
             plug_data.insert(k.to_string(), value_to_json(v));
         }
@@ -163,11 +134,7 @@ fn render_posts(
             generated_html
         };
 
-        println!("dest path we got : {:#?}", dest_path);
-
         post_list.push(front_matter.clone());
-
-        println!("end of day file to write {:#?}", dest_path);
 
         // write out the html file
         fs::create_dir_all(&dest_path.parent().unwrap()).unwrap();
@@ -239,7 +206,7 @@ fn get_dest_path(
 
         dest_path.push(file_name);
     } else {
-        println!("[ERR]No post path found");
+        println!("[ERR] No post path found");
         // TODO : Don't make app exit when no path found;
         // use a generic path in this case
         exit(0);
