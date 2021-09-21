@@ -75,7 +75,8 @@ fn render_posts(
 ) -> Vec<Toml> {
     let mut html_to_write: String;
     let mut post_list: Vec<Toml> = Vec::<Toml>::new();
-    let comrak_options = ComrakOptions::default();
+    let mut comrak_options = ComrakOptions::default();
+    comrak_options.render.unsafe_ = true;
     let mut dest_path: PathBuf;
     let mut rel_path: PathBuf;
 
