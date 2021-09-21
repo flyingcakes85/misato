@@ -75,7 +75,7 @@ fn render_posts(
 ) -> Vec<Toml> {
     let mut html_to_write: String;
     let mut post_list: Vec<Toml> = Vec::<Toml>::new();
-    let comark_options = ComrakOptions::default();
+    let comrak_options = ComrakOptions::default();
     let mut dest_path: PathBuf;
     let mut rel_path: PathBuf;
 
@@ -123,7 +123,7 @@ fn render_posts(
         let plugged_md_text = md_handlebars.render("raw_markdown", &plug_data).unwrap();
 
         // convert plugged markdown to html
-        let generated_html = markdown_to_html(&plugged_md_text, &comark_options);
+        let generated_html = markdown_to_html(&plugged_md_text, &comrak_options);
 
         // register the final markdown_data template
         // at this point this it technically html
