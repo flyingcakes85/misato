@@ -2,8 +2,8 @@
 
 use std::env;
 
+mod build;
 mod init;
-mod new_build;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -18,7 +18,7 @@ fn main() {
                 eprintln!("[ERR] Please provide a name for this project.")
             };
         } else if args[1] == "build" {
-            new_build::build();
+            build::build();
         } else {
             eprintln!("[ERR] Subcommand \"{}\" not recognized.", args[1]);
         }
