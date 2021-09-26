@@ -117,7 +117,7 @@ scss = [\"main.scss\"]
     first_post_path.push("posts");
     first_post_path.push("first_post.md");
 
-    let mut pages_index_path = path_base.clone();
+    let mut pages_index_path = path_base;
     pages_index_path.push("pages");
     pages_index_path.push("index.html");
 

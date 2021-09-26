@@ -196,14 +196,14 @@ fn get_dest_path(
     let mut dest_path = PathBuf::new();
 
     // Following the preference, first check override in the post itself
-    if json_map_key_exists(&data, "data", "post_path") {
+    if json_map_key_exists(data, "data", "post_path") {
         println!("found custom path in post");
-        for p in data["data"]["post_path"].as_str().unwrap().split("/") {
+        for p in data["data"]["post_path"].as_str().unwrap().split('/') {
             dest_path.push(p.to_string());
         }
     }
     // if no overrides then use the global path in config.toml
-    else if json_map_key_exists(&data, "config", "blog_path") {
+    else if json_map_key_exists(data, "config", "blog_path") {
         println!("Using path defined in global config");
         handlebars
             .register_template_string(
@@ -215,7 +215,7 @@ fn get_dest_path(
         for p in handlebars
             .render("blog_path_internal", &data)
             .unwrap()
-            .split("/")
+            .split('/')
         {
             dest_path.push(p.to_string());
         }
@@ -245,7 +245,7 @@ fn get_attributes() -> Map<String, Json> {
     let config_string = fs::read_to_string("config.toml").unwrap();
     let config_toml = config_string.parse::<toml::Value>().unwrap();
 
-    for c in config_toml.as_table() {
+    if let Some(c) = config_toml.as_table() {
         for t in c {
             attributes.insert(
                 t.0.to_string(),
@@ -270,7 +270,7 @@ pub fn discover_pages(handlebars: &mut Handlebars, renderlist: &mut Vec<(String,
             if source_path.path().extension().and_then(OsStr::to_str) == Some("html")
                 || source_path.path().extension().and_then(OsStr::to_str) == Some("hbs")
             {
-                let mut template_name = get_file_name(&source_path.path());
+                let mut template_name = get_file_name(source_path.path());
 
                 // suffix name with "_pages" to prevent
                 // possible clash with other temlpates
@@ -292,7 +292,7 @@ pub fn discover_posts(handlebars: &mut Handlebars, renderlist: &mut Vec<(String,
             let source_path = source_path.unwrap();
 
             if source_path.path().extension().and_then(OsStr::to_str) == Some("md") {
-                let mut template_name = get_file_name(&source_path.path());
+                let mut template_name = get_file_name(source_path.path());
 
                 // suffix name with "_post" to prevent
                 // possible clash with other temlpates
@@ -316,7 +316,7 @@ pub fn discover_layouts(handlebars: &mut Handlebars) {
             if source_path.path().extension().and_then(OsStr::to_str) == Some("html")
                 || source_path.path().extension().and_then(OsStr::to_str) == Some("hbs")
             {
-                let mut template_name = get_file_name(&source_path.path());
+                let mut template_name = get_file_name(source_path.path());
 
                 // suffix name with "_layout" to prevent
                 // possible clash with other temlpates
@@ -366,7 +366,7 @@ fn get_file_name(p: &Path) -> String {
 /// Generate PathBuf from a unix path (forward slash)
 fn path_from_string(path_str: &str) -> PathBuf {
     let mut path = PathBuf::new();
-    for p in path_str.split("/") {
+    for p in path_str.split('/') {
         path.push(p);
     }
 
@@ -374,18 +374,17 @@ fn path_from_string(path_str: &str) -> PathBuf {
 }
 
 /// Replace prefix of a PathBuf
-fn switch_path_prefix(path: &PathBuf, old_prefix: &str, new_prefix: &str) -> PathBuf {
+fn switch_path_prefix(path: &Path, old_prefix: &str, new_prefix: &str) -> PathBuf {
     let mut final_path = PathBuf::new();
     final_path.push(new_prefix);
 
     for p in path
-        .clone()
         .to_str()
         .unwrap()
         .to_string()
         .strip_prefix(old_prefix)
         .unwrap()
-        .split("/")
+        .split('/')
     {
         final_path.push(p);
     }
@@ -394,7 +393,7 @@ fn switch_path_prefix(path: &PathBuf, old_prefix: &str, new_prefix: &str) -> Pat
 
 /// Generates CSS from SCSS
 /// Copies CSS files as they are
-fn generate_css(scss_list: &Vec<Json>) {
+fn generate_css(scss_list: &[Json]) {
     // first copy the CSS files
     for source_path in WalkDir::new("styles") {
         let source_path = source_path.unwrap();
